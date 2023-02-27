@@ -118,3 +118,36 @@
   0% { opacity: 1; }
   100% { opacity: 0; }
 }
+
+.boards {
+  display: flex;
+  flex-direction: row;
+  margin-top: 50px;
+}
+
+.board {
+  display: flex;
+  flex-direction: column;
+  align-self: center;
+}
+
+.row {
+  display: flex;
+  flex-direction: row;
+  width: fit-content;
+}
+.col {
+  border: 1px solid black;
+  aspect-ratio: 1/1;
+  width: 30px;
+}
+
+.board-label{
+  text-align: center;
+}
+
+.board-container{
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}

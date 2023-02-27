@@ -1,0 +1,26 @@
+<div class="boards">
+    <div class="board-container">
+        <p class="board-label"> YOUR BOARD </p>
+        <div class="board player-board">
+            <%= for row <- @row do %>
+            <div class={"row  row#{row}"}>
+                <%= for col <- @col do %>
+                    <div class={"col cell#{row}#{col}"}></div>
+                <% end %>
+            </div>
+            <% end %>
+        </div>
+    </div>
+    <div class="board-container">
+        <p class="board-label"> ENEMY BOARD </p>
+        <div class="board enemy-board">
+            <%= for row <- @row do %>
+            <div class={"row row#{row}"}>
+                <%= for col <- @col do %>
+                    <div class={"col cell#{row}#{col}"}></div>
+                <% end %>
+            </div>
+            <% end %>
+        </div>
+    </div>
+</div>
