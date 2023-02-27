@@ -1,4 +1,5 @@
 defmodule Ships.Core.Player do
+  @moduledoc false
   @enforce_keys [:id]
   defstruct id: "",
             status: :preparing,
