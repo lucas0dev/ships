@@ -13,6 +13,24 @@ defmodule Ships.Core.ShipTest do
       assert {:ok, %Ship{}} = result
     end
 
+    test "should return ship with horizontally oriented coordinates when direction is horizontal" do
+      coordinates = {1, 1}
+      size = 4
+      direction = :horizontal
+      {:ok, ship} = Ship.new(coordinates, size, direction)
+
+      assert ship.coordinates == [{1, 1}, {2, 1}, {3, 1}, {4, 1}]
+    end
+
+    test "should return ship with vertically oriented coordinates when direction is vertical" do
+      coordinates = {1, 1}
+      size = 4
+      direction = :vertical
+      {:ok, ship} = Ship.new(coordinates, size, direction)
+
+      assert ship.coordinates == [{1, 1}, {1, 2}, {1, 3}, {1, 4}]
+    end
+
     test "should return :error if on of params is invalid" do
       coordinates = {1, 1}
       size = 2
