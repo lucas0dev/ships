@@ -52,139 +52,178 @@ defmodule Ships.Core.GameTest do
     end
   end
 
-  describe "place_ship(player, coordinates, orientation) when params are valid" do
-    test "should return {:preparing, player, ship_coordinates} with updated player ships" do
-      game = Game.new_game("player1")
-      player = game.player1
+  describe "place_ship(game, player_id, coordinates, orientation) when params are valid" do
+    test "should return {:preparing, game, ship_coordinates} with updated player ships" do
+      player_id = "player1"
+      game = Game.new_game(player_id)
       coordinates = {0, 0}
       orientation = :horizontal
 
-      {:preparing, updated_player, ship_coordinates} =
-        Game.place_ship(player, coordinates, orientation)
+      {:preparing, updated_game, ship_coordinates} =
+        Game.place_ship(game, player_id, coordinates, orientation)
 
-      player_ship = Enum.at(updated_player.ships, 0)
+      player_ship = Enum.at(updated_game.player1.ships, 0)
 
       assert true = Enum.any?(ship_coordinates, fn value -> value == coordinates end)
-      assert updated_player.ships != []
+      assert updated_game.player1.ships != []
       assert ship_coordinates == player_ship
     end
   end
 
-  describe "place_ship(player, coordinates, orientation) when coordinates were already used" do
-    test "should return {:invalid_coordinates, player, []} with unchanged player" do
-      game = Game.new_game("player1")
-      player = game.player1
+  describe "place_ship(game, player_id, coordinates, orientation) when coordinates were already used" do
+    test "should return {:invalid_coordinates, game, []} with unchanged player" do
+      player_id = "player1"
+      game = Game.new_game(player_id)
       coordinates = {0, 0}
       next_coordinates = {1, 0}
       orientation = :horizontal
 
-      {:preparing, updated_player, _ship_coordinates} =
-        Game.place_ship(player, coordinates, orientation)
+      {:preparing, updated_game, _ship_coordinates} =
+        Game.place_ship(game, player_id, coordinates, orientation)
 
-      {response, player_after, coordinates_after} =
-        Game.place_ship(updated_player, next_coordinates, orientation)
+      {response, game_after, coordinates_after} =
+        Game.place_ship(updated_game, player_id, next_coordinates, orientation)
 
       assert coordinates_after == []
       assert response == :invalid_coordinates
-      assert player_after == updated_player
+      assert updated_game.player1 == game_after.player1
     end
   end
 
-  describe "place_ship(player, coordinates, orientation) with invalid coordinates" do
-    test "should return {:invalid_coordinates, player, []} with unchanged player" do
-      game = Game.new_game("player1")
-      player = game.player1
+  describe "place_ship(game, player_id, coordinates, orientation) with invalid coordinates" do
+    test "should return {:invalid_coordinates, game, []} with unchanged player" do
+      player_id = "player1"
+      game = Game.new_game(player_id)
       invalid_coordinates = {-1, 2}
       orientation = :horizontal
 
-      {response, player_after, coordinates_after} =
-        Game.place_ship(player, invalid_coordinates, orientation)
+      {response, game_after, coordinates_after} =
+        Game.place_ship(game, player_id, invalid_coordinates, orientation)
 
       assert coordinates_after == []
       assert response == :invalid_coordinates
-      assert player_after == player
+      assert game_after.player1 == game.player1
     end
   end
 
-  describe "place_ship(player, coordinates, orientation) when not all ship coordinates belong to board" do
-    test "should return {:invalid_coordinates, player, []} with unchanged player" do
-      game = Game.new_game("player1")
-      player = game.player1
+  describe "place_ship(game, player_id, coordinates, orientation) when not all ship coordinates belong to board" do
+    test "should return {:invalid_coordinates, game, []} with unchanged player" do
+      player_id = "player1"
+      game = Game.new_game(player_id)
       coordinates = {9, 9}
       orientation = :horizontal
 
-      {response, player_after, coordinates_after} =
-        Game.place_ship(player, coordinates, orientation)
+      {response, game_after, coordinates_after} =
+        Game.place_ship(game, player_id, coordinates, orientation)
 
       assert coordinates_after == []
       assert response == :invalid_coordinates
-      assert player_after == player
+      assert game_after.player1 == game.player1
     end
   end
 
-  describe "place_ship(player, coordinates, orientation) when ship is too close to another" do
-    test "should return {:invalid_coordinates, player, []} with unchanged player" do
-      game = Game.new_game("player1")
-      player = game.player1
+  describe "place_ship(game, player_id, coordinates, orientation) when ship is too close to another" do
+    test "should return {:invalid_coordinates, game, []} with unchanged player" do
+      player_id = "player1"
+      game = Game.new_game(player_id)
       coordinates = {0, 0}
       next_coordinates = {1, 0}
       orientation = :vertical
 
-      {:preparing, update_player, _coordinates_after} =
-        Game.place_ship(player, coordinates, orientation)
+      {:preparing, updated_game, _coordinates_after} =
+        Game.place_ship(game, player_id, coordinates, orientation)
 
-      {response, player_after, coordinates_after} =
-        Game.place_ship(update_player, next_coordinates, orientation)
+      {response, game_after, coordinates_after} =
+        Game.place_ship(updated_game, player_id, next_coordinates, orientation)
 
       assert coordinates_after == []
       assert response == :invalid_coordinates
-      assert player_after == update_player
+      assert game_after.player1 == updated_game.player1
     end
   end
 
-  describe "place_ship(player, coordinates, orientation) when player already placed all of his ships" do
-    test "should return {:all_placed, player, []} with unchanged player" do
-      game = Game.new_game("player1")
-      player = game.player1
+  describe "place_ship(game, player_id, coordinates, orientation) when player already placed all of his ships" do
+    test "should return {:all_placed, game, []} with unchanged player" do
+      player_id = "player1"
+      game = Game.new_game(player_id)
       orientation = :horizontal
 
-      {_response, player, _coordinates_after} = Game.place_ship(player, {0, 0}, orientation)
-      {_response, player, _coordinates_after} = Game.place_ship(player, {0, 2}, orientation)
-      {_response, player, _coordinates_after} = Game.place_ship(player, {0, 4}, orientation)
-      {_response, player, _coordinates_after} = Game.place_ship(player, {0, 6}, orientation)
-      {_response, player, _coordinates_after} = Game.place_ship(player, {0, 8}, orientation)
-      {_response, player, _coordinates_after} = Game.place_ship(player, {6, 0}, orientation)
-      {_response, player, _coordinates_after} = Game.place_ship(player, {6, 2}, orientation)
-      {_response, player, _coordinates_after} = Game.place_ship(player, {6, 4}, orientation)
-      {_response, player, _coordinates_after} = Game.place_ship(player, {6, 6}, orientation)
-      {_response, player, _coordinates_after} = Game.place_ship(player, {6, 8}, orientation)
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {0, 0}, orientation)
 
-      {response, player_after, _coordinates_after} = Game.place_ship(player, {8, 8}, orientation)
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {0, 2}, orientation)
 
-      assert player_after == player
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {0, 4}, orientation)
+
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {0, 6}, orientation)
+
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {0, 8}, orientation)
+
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {6, 0}, orientation)
+
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {6, 2}, orientation)
+
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {6, 4}, orientation)
+
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {6, 6}, orientation)
+
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {6, 8}, orientation)
+
+      {response, game_after, _coordinates_after} =
+        Game.place_ship(game, player_id, {8, 8}, orientation)
+
+      assert game_after.player1 == game.player1
       assert response == :all_placed
     end
   end
 
-  describe "place_ship(player, coordinates, orientation) when player places his last ship" do
-    test "should change his status to :ready" do
-      game = Game.new_game("player1")
-      player = game.player1
+  describe "place_ship(game, player_id, coordinates, orientation) when player places his last ship" do
+    test "should change player's status to :ready" do
+      player_id = "player1"
+      game = Game.new_game(player_id)
       orientation = :horizontal
 
-      {_response, player, _coordinates_after} = Game.place_ship(player, {0, 0}, orientation)
-      {_response, player, _coordinates_after} = Game.place_ship(player, {0, 2}, orientation)
-      {_response, player, _coordinates_after} = Game.place_ship(player, {0, 4}, orientation)
-      {_response, player, _coordinates_after} = Game.place_ship(player, {0, 6}, orientation)
-      {_response, player, _coordinates_after} = Game.place_ship(player, {0, 8}, orientation)
-      {_response, player, _coordinates_after} = Game.place_ship(player, {6, 0}, orientation)
-      {_response, player, _coordinates_after} = Game.place_ship(player, {6, 2}, orientation)
-      {_response, player, _coordinates_after} = Game.place_ship(player, {6, 4}, orientation)
-      {_response, player, _coordinates_after} = Game.place_ship(player, {6, 6}, orientation)
-      {_response, player_after, _coordinates_after} = Game.place_ship(player, {6, 8}, orientation)
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {0, 0}, orientation)
 
-      assert player.status != player_after.status
-      assert player_after.status == :ready
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {0, 2}, orientation)
+
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {0, 4}, orientation)
+
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {0, 6}, orientation)
+
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {0, 8}, orientation)
+
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {6, 0}, orientation)
+
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {6, 2}, orientation)
+
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {6, 4}, orientation)
+
+      {_response, game, _coordinates_after} =
+        Game.place_ship(game, player_id, {6, 6}, orientation)
+
+      {_response, game_after, _coordinates_after} =
+        Game.place_ship(game, player_id, {6, 8}, orientation)
+
+      assert game.player1.status != game_after.player1.status
+      assert game_after.player1.status == :ready
     end
   end
 end

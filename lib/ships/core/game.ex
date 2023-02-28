@@ -7,6 +7,7 @@ defmodule Ships.Core.Game do
   alias Ships.Core.Player
   alias Ships.Core.Ship
 
+  @available_ships [4, 3, 3, 2, 2, 2, 1, 1, 1, 1]
   @board_border 9
 
   @spec new_game(any()) :: %__MODULE__{}
@@ -28,17 +29,32 @@ defmodule Ships.Core.Game do
     end
   end
 
-  @spec place_ship(Player.t(), {non_neg_integer(), non_neg_integer()}, atom()) ::
-          {atom(), Player.t(), list}
-  def place_ship(%Player{} = player, coordinates, orientation) do
-    with {:ok, size} <- next_ship_size(player),
-         :ok <- check_coordinates(coordinates, size, orientation),
-         {:ok, ship} <- Ship.new(coordinates, size, orientation),
-         {:ok, player} <- add_ship(player, ship) do
-      {player.status, player, ship.coordinates}
-    else
-      :all_placed -> {:all_placed, player, []}
-      _ -> {:invalid_coordinates, player, []}
+  @spec place_ship(%__MODULE__{}, any(), {non_neg_integer(), non_neg_integer()}, atom()) ::
+          {atom(), %__MODULE__{}, list}
+  def place_ship(%__MODULE__{} = game, player_id, coordinates, orientation) do
+    {player_num, player} = get_player(game, player_id)
+
+    {response, updated_player, ship_coordinates} =
+      with {:ok, size} <- next_ship_size(player),
+           true <- in_board_range?(coordinates, size, orientation),
+           {:ok, ship} <- Ship.new(coordinates, size, orientation),
+           {:ok, player} <- add_ship(player, ship) do
+        {player.status, player, ship.coordinates}
+      else
+        :all_placed -> {:all_placed, player, []}
+        _ -> {:invalid_coordinates, player, []}
+      end
+
+    game = Map.replace(game, player_num, updated_player)
+
+    {response, game, ship_coordinates}
+  end
+
+  defp get_player(%__MODULE__{} = game, player_id) do
+    cond do
+      game.player1.id == player_id -> {:player1, game.player1}
+      game.player2.id == player_id -> {:player2, game.player2}
+      true -> nil
     end
   end
 
@@ -82,22 +98,15 @@ defmodule Ships.Core.Game do
     end
   end
 
-  defp check_coordinates({x, y}, size, orientation) when x >= 0 and y >= 0 do
-    not_in_border =
-      case orientation do
-        :horizontal -> x + size - 1 > @board_border
-        :vertical -> y + size - 1 > @board_border
-      end
-
-    if not_in_border do
-      :invalid
-    else
-      :ok
+  defp in_board_range?({x, y}, size, orientation) when x >= 0 and y >= 0 do
+    case orientation do
+      :horizontal -> x + size - 1 <= @board_border
+      :vertical -> y + size - 1 <= @board_border
     end
   end
 
-  defp check_coordinates(_, _, _) do
-    :invalid
+  defp in_board_range?(_, _, _) do
+    false
   end
 
   defp neighbours_for(coordinates, direction) do
