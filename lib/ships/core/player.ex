@@ -6,7 +6,7 @@ defmodule Ships.Core.Player do
             ships: [],
             available_ships: [4, 3, 3, 2, 2, 2, 1, 1, 1, 1],
             shot_at: [],
-            hit_coordinates: []
+            got_hit_at: []
 
   @type t :: %__MODULE__{
           id: String,
@@ -14,6 +14,6 @@ defmodule Ships.Core.Player do
           ships: list,
           available_ships: list,
           shot_at: list,
-          hit_coordinates: list
+          got_hit_at: list
         }
 end
