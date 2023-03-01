@@ -14,6 +14,7 @@ defmodule Ships.Application do
       {Phoenix.PubSub, name: Ships.PubSub},
       # Start the Endpoint (http/https)
       ShipsWeb.Endpoint,
+      Ships.Server.GameRegistry,
       Ships.Server.GameSupervisor
       # Start a worker by calling: Ships.Worker.start_link(arg)
       # {Ships.Worker, arg}
