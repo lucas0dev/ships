@@ -4,7 +4,7 @@ defmodule Ships.Server.GameServer do
 
   alias Ships.Core.Game
 
-  def start_link(game_id, player_id) do
+  def start_link(game_id: game_id, player_id: player_id) do
     GenServer.start_link(__MODULE__, player_id, name: game_id)
   end
 
