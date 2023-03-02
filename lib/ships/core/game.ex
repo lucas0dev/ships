@@ -10,12 +10,12 @@ defmodule Ships.Core.Game do
   @available_ships [4, 3, 3, 2, 2, 2, 1, 1, 1, 1]
   @board_border 9
 
-  @spec new_game(any()) :: %__MODULE__{}
+  @spec new_game(any()) :: {:ok, %__MODULE__{}} | {:error, %__MODULE__{}}
   def new_game(player_id) do
     join_game(%__MODULE__{}, player_id)
   end
 
-  @spec join_game(%__MODULE__{}, any()) :: %__MODULE__{} | :error
+  @spec join_game(%__MODULE__{}, any()) :: {:ok, %__MODULE__{}} | {:error, %__MODULE__{}}
   def join_game(
         %__MODULE__{player1: _, player2: _, status: :preparing, turn: _} = game,
         player_id
@@ -23,9 +23,9 @@ defmodule Ships.Core.Game do
     player = %Player{id: player_id}
 
     cond do
-      game.player1 == nil -> %{game | player1: player}
-      game.player2 == nil -> %{game | player2: player}
-      true -> :error
+      game.player1 == nil -> {:ok, %{game | player1: player}}
+      game.player2 == nil -> {:ok, %{game | player2: player}}
+      true -> {:error, game}
     end
   end
 
