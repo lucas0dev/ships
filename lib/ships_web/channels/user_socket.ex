@@ -9,6 +9,7 @@ defmodule ShipsWeb.UserSocket do
   ## Channels
 
   channel "lobby", ShipsWeb.LobbyChannel
+  channel "game:*", ShipsWeb.GameChannel
 
   # Socket params are passed from the client and can
   # be used to verify and authenticate a user. After

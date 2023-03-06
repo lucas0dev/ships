@@ -7,5 +7,17 @@ let lobby = socket.channel('lobby');
 socket.connect();
 lobby.join()
 .receive('ok', resp => {
-  channel.push("join_game", {})
+    console.log("joined lobby")
+    lobby.push("join_game", {})
+});
+
+lobby.on("new_game", (payload) => {
+    game_id = payload.game_id;
+    game_channel = socket.channel(`game:${game_id}`);
+    game_channel.join()
+    .receive('ok', resp => {
+    })
+    .receive('error', resp => {
+      channel.push("join_game", {});
+    });
 });
