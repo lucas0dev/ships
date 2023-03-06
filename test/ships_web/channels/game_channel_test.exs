@@ -7,13 +7,4 @@ defmodule ShipsWeb.GameChannelTest do
 
     %{socket: socket}
   end
-
-  describe "joining channel" do
-    test "should generate and assign user_id string to socket", %{socket: socket} do
-      user_id = socket.assigns.user_id
-
-      assert String.length(user_id) > 0 == true
-      assert String.valid?(user_id) == true
-    end
-  end
 end

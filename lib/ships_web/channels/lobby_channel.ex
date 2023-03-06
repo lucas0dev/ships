@@ -5,7 +5,7 @@ defmodule ShipsWeb.LobbyChannel do
 
   use ShipsWeb, :channel
 
-  alias Ships.Server.GameRegistry
+  alias Ships.Server.GameServer
   alias ShipsWeb.Presence
 
   @impl true
@@ -14,32 +14,21 @@ defmodule ShipsWeb.LobbyChannel do
   end
 
   @impl true
-  def handle_in("join_game", _payload, socket) do
+  def handle_in("new_game", _payload, socket) do
     games = Map.keys(Presence.list("lobby"))
+    player_id = socket.assigns.user_id
 
     case games do
       [] ->
-        game_id = generate_id()
+        {:ok, game_id, _pid} = GameServer.new_game(player_id)
         Presence.track(self(), "lobby", game_id, %{})
-        push(socket, "new_game", %{game_id: game_id})
+        push(socket, "game_created", %{game_id: game_id})
 
       _ ->
         game_id = Enum.at(games, 0)
-        push(socket, "new_game", %{game_id: game_id})
+        push(socket, "game_created", %{game_id: game_id})
     end
 
     {:reply, :ok, socket}
-  end
-
-  defp generate_id do
-    id =
-      :crypto.strong_rand_bytes(10)
-      |> Base.encode64()
-      |> binary_part(0, 10)
-
-    case GameRegistry.whereis_name(id) do
-      :undefined -> id
-      _ -> generate_id()
-    end
   end
 end

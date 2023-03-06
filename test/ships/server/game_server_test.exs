@@ -10,17 +10,23 @@ defmodule Ships.Server.GameServerTest do
     %{supervisor: pid}
   end
 
-  describe "new_game(game_id, player_id)" do
+  describe "new_game(player_id)" do
     test "should start a process with Game struct as a state", context do
       player_id = "player1"
-      {:ok, pid} = GameServer.new_game(context.supervisor, :game_id, player_id)
+      {:ok, _game_id, pid} = GameServer.new_game(player_id, context.supervisor)
 
       assert %Game{} = :sys.get_state(pid)
     end
 
+    test "should return {:ok, game_id, pid}", context do
+      player_id = "player1"
+
+      assert {:ok, _game_id, _pid} = GameServer.new_game(player_id, context.supervisor)
+    end
+
     test "should assign player_id to game's player1 id", context do
       player_id = "player1"
-      {:ok, pid} = GameServer.new_game(context.supervisor, :game_id, player_id)
+      {:ok, _game_id, pid} = GameServer.new_game(player_id, context.supervisor)
       state = :sys.get_state(pid)
       state_player1_id = state.player1.id
 
@@ -52,8 +58,7 @@ defmodule Ships.Server.GameServerTest do
   defp create_game(context) do
     player1_id = "player1"
     player2_id = "player2"
-    game_id = :game_id
-    {:ok, pid} = GameServer.new_game(context.supervisor, game_id, player1_id)
+    {:ok, game_id, pid} = GameServer.new_game(player1_id, context.supervisor)
 
     %{
       pid: pid,

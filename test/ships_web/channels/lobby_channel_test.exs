@@ -16,25 +16,34 @@ defmodule ShipsWeb.LobbyChannelTest do
   def track_player(context) do
     game_id = "new_game"
     Presence.track(context.socket2, game_id, %{})
-    ref = push(context.socket, "join_game", %{})
+    ref = push(context.socket, "new_game", %{})
 
     %{game_id: game_id, ref: ref}
   end
 
-  describe "join_game when there are none game_ids tracked by Presence" do
+  describe "joining channel" do
+    test "should generate and assign user_id string to socket", %{socket: socket} do
+      user_id = socket.assigns.user_id
+
+      assert String.length(user_id) > 0 == true
+      assert String.valid?(user_id) == true
+    end
+  end
+
+  describe "new_game when there are none game_ids tracked by Presence" do
     test "replies with status ok", %{socket: socket} do
-      ref = push(socket, "join_game", %{})
+      ref = push(socket, "new_game", %{})
       assert_reply ref, :ok
     end
 
-    test "pushes event 'new_game' with generated game_id", %{socket: socket} do
-      push(socket, "join_game", %{})
-      assert_push "new_game", %{game_id: _game_id}
+    test "pushes event 'game_created' with generated game_id", %{socket: socket} do
+      push(socket, "new_game", %{})
+      assert_push "game_created", %{game_id: _game_id}
     end
 
     test "makes Presence track socket with game_id", %{socket: socket} do
-      ref = push(socket, "join_game", %{})
-      assert_push "new_game", %{game_id: game_id}
+      ref = push(socket, "new_game", %{})
+      assert_push "game_created", %{game_id: game_id}
       assert_reply ref, :ok
       presence_list = Presence.list("lobby")
 
@@ -42,7 +51,7 @@ defmodule ShipsWeb.LobbyChannelTest do
     end
   end
 
-  describe "join_game when there is already game tracked by Presence" do
+  describe "new_game when there is already game tracked by Presence" do
     setup [:track_player]
 
     test "replies with status ok", %{ref: ref} do
@@ -50,7 +59,7 @@ defmodule ShipsWeb.LobbyChannelTest do
     end
 
     test "should not track and generate new game_id", %{game_id: game_id, ref: ref} do
-      assert_push "new_game", %{game_id: ^game_id}
+      assert_push "game_created", %{game_id: ^game_id}
       assert_reply ref, :ok
 
       presence_list = Presence.list("lobby")
@@ -60,7 +69,7 @@ defmodule ShipsWeb.LobbyChannelTest do
 
     test "pushes event 'new_game' with existing game_id", %{game_id: game_id, ref: ref} do
       assert_reply ref, :ok
-      assert_push "new_game", %{game_id: ^game_id}
+      assert_push "game_created", %{game_id: ^game_id}
     end
   end
 end

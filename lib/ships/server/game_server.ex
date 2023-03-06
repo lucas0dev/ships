@@ -6,10 +6,11 @@ defmodule Ships.Server.GameServer do
   alias Ships.Server.GameRegistry
   alias Ships.Server.GameSupervisor
 
-  @spec new_game(atom | pid | {atom, any} | {:via, atom, any}, any, any) ::
-          :ignore | {:error, any} | {:ok, pid} | {:ok, pid, any}
-  def new_game(supervisor, game_id, player_id) do
-    GameSupervisor.start_child(supervisor, game_id, player_id)
+  @spec new_game(any(), any()) :: {:ok, any(), pid()}
+  def new_game(player_id, supervisor \\ GameSupervisor) do
+    game_id = generate_id()
+    {:ok, pid} = GameSupervisor.start_child(supervisor, game_id, player_id)
+    {:ok, game_id, pid}
   end
 
   @spec join_game(any, any) :: :ok | :error
@@ -71,5 +72,17 @@ defmodule Ships.Server.GameServer do
 
   defp via_tuple(game_id) do
     {:via, GameRegistry, game_id}
+  end
+
+  defp generate_id do
+    id =
+      :crypto.strong_rand_bytes(10)
+      |> Base.encode64()
+      |> binary_part(0, 10)
+
+    case GameRegistry.whereis_name(id) do
+      :undefined -> id
+      _ -> generate_id()
+    end
   end
 end

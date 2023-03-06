@@ -24,6 +24,7 @@ defmodule ShipsWeb.UserSocket do
   # performing token verification on connect.
   @impl true
   def connect(_params, socket, _connect_info) do
+    socket = assign(socket, :user_id, new_player_id())
     {:ok, socket}
   end
 
@@ -39,4 +40,10 @@ defmodule ShipsWeb.UserSocket do
   # Returning `nil` makes this socket anonymous.
   @impl true
   def id(_socket), do: nil
+
+  defp new_player_id do
+    :crypto.strong_rand_bytes(10)
+    |> Base.encode64()
+    |> binary_part(0, 10)
+  end
 end
