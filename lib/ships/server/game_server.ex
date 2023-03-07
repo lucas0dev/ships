@@ -6,10 +6,15 @@ defmodule Ships.Server.GameServer do
   alias Ships.Server.GameRegistry
   alias Ships.Server.GameSupervisor
 
-  @spec new_game(any(), any()) :: {:ok, any(), pid()}
-  def new_game(player_id, supervisor \\ GameSupervisor) do
+  @spec new_game() :: {:ok, any(), pid()}
+  def new_game() do
+    new_game(GameSupervisor)
+  end
+
+  @spec new_game(any()) :: {:ok, any(), pid()}
+  def new_game(supervisor) do
     game_id = generate_id()
-    {:ok, pid} = GameSupervisor.start_child(supervisor, game_id, player_id)
+    {:ok, pid} = GameSupervisor.start_child(supervisor, game_id)
     {:ok, game_id, pid}
   end
 
@@ -39,13 +44,13 @@ defmodule Ships.Server.GameServer do
     end
   end
 
-  def start_link(game_id: game_id, player_id: player_id) do
-    GenServer.start_link(__MODULE__, player_id, name: via_tuple(game_id))
+  def start_link(game_id: game_id) do
+    GenServer.start_link(__MODULE__, [], name: via_tuple(game_id))
   end
 
   @impl true
-  def init(player_id) do
-    {:ok, state} = Game.new_game(player_id)
+  def init(_opts) do
+    {:ok, state} = Game.new_game()
     {:ok, state}
   end
 

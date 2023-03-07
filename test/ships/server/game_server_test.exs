@@ -10,31 +10,19 @@ defmodule Ships.Server.GameServerTest do
     %{supervisor: pid}
   end
 
-  describe "new_game(player_id)" do
+  describe "new_game(supervisor)" do
     test "should start a process with Game struct as a state", context do
-      player_id = "player1"
-      {:ok, _game_id, pid} = GameServer.new_game(player_id, context.supervisor)
+      {:ok, _game_id, pid} = GameServer.new_game(context.supervisor)
 
       assert %Game{} = :sys.get_state(pid)
     end
 
     test "should return {:ok, game_id, pid}", context do
-      player_id = "player1"
-
-      assert {:ok, _game_id, _pid} = GameServer.new_game(player_id, context.supervisor)
-    end
-
-    test "should assign player_id to game's player1 id", context do
-      player_id = "player1"
-      {:ok, _game_id, pid} = GameServer.new_game(player_id, context.supervisor)
-      state = :sys.get_state(pid)
-      state_player1_id = state.player1.id
-
-      assert state_player1_id == player_id
+      assert {:ok, _game_id, _pid} = GameServer.new_game(context.supervisor)
     end
   end
 
-  describe "terminate(game_id) when process with given id exists" do
+  describe "terminate(game_id) when process with given game_id exists" do
     setup [:create_game]
 
     test "should terminate game process with given game_id and return :ok", context do
@@ -45,7 +33,7 @@ defmodule Ships.Server.GameServerTest do
     end
   end
 
-  describe "terminate(game_id) when process with given id does not exist" do
+  describe "terminate(game_id) when process with given game_id does not exist" do
     setup [:create_game]
 
     test "should return :error", context do
@@ -58,7 +46,8 @@ defmodule Ships.Server.GameServerTest do
   defp create_game(context) do
     player1_id = "player1"
     player2_id = "player2"
-    {:ok, game_id, pid} = GameServer.new_game(player1_id, context.supervisor)
+    {:ok, game_id, pid} = GameServer.new_game(context.supervisor)
+    :ok = GameServer.join_game(game_id, player1_id)
 
     %{
       pid: pid,

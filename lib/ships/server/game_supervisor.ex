@@ -2,8 +2,8 @@ defmodule Ships.Server.GameSupervisor do
   @moduledoc false
   use DynamicSupervisor
 
-  def start_child(supervisor, game_id, player_id) do
-    spec = {Ships.Server.GameServer, game_id: game_id, player_id: player_id}
+  def start_child(supervisor, game_id) do
+    spec = {Ships.Server.GameServer, game_id: game_id}
     DynamicSupervisor.start_child(supervisor, spec)
   end
 

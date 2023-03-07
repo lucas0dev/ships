@@ -16,11 +16,10 @@ defmodule ShipsWeb.LobbyChannel do
   @impl true
   def handle_in("new_game", _payload, socket) do
     games = Map.keys(Presence.list("lobby"))
-    player_id = socket.assigns.user_id
 
     case games do
       [] ->
-        {:ok, game_id, _pid} = GameServer.new_game(player_id)
+        {:ok, game_id, _pid} = GameServer.new_game()
         Presence.track(self(), "lobby", game_id, %{})
         push(socket, "game_created", %{game_id: game_id})
 

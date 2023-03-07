@@ -3,13 +3,11 @@ defmodule Ships.Core.GameTest do
 
   alias Ships.Core.Game
 
-  describe "new_game(player_id)" do
-    test "should return {:ok, %Game{}} with player1 with player_id as id" do
-      player_id = "player_one"
-      {response, game} = Game.new_game(player_id)
+  describe "new_game()" do
+    test "should return {:ok, %Game{}}" do
+      {response, _game} = Game.new_game()
 
       assert response == :ok
-      assert game.player1.id == player_id
     end
   end
 
@@ -26,41 +24,41 @@ defmodule Ships.Core.GameTest do
   end
 
   describe "join_game(game, player_id) when there is already player1" do
-    test "should return %Game{} struct with player2 with player_id as id" do
-      player_one = "player_one"
-      player_two = "player_two"
+    setup [:player1_join, :player2_join]
 
-      {:ok, game} = Game.new_game(player_one)
-      {:ok, game} = Game.join_game(game, player_two)
-
-      assert game.player1.id == player_one
-      assert game.player2.id == player_two
+    test "should return %Game{} struct with player2 with player_id as id", %{
+      player1_id: player1_id,
+      player2_id: player2_id,
+      game: game
+    } do
+      assert game.player1.id == player1_id
+      assert game.player2.id == player2_id
     end
   end
 
   describe "join_game(game, player_id) when there are already 2 players" do
-    test "should return {:error, %Game{}}" do
-      player_one = "player_one"
-      player_two = "player_two"
-      player_three = "player_three"
+    setup [:player1_join, :player2_join]
 
-      {:ok, game} = Game.new_game(player_one)
-      {:ok, game} = Game.join_game(game, player_two)
+    test "should return {:game_full, %Game{}}", %{game: game} do
+      player_three = "player_three"
       {response, _game} = Game.join_game(game, player_three)
 
-      assert response == :error
+      assert response == :game_full
     end
   end
 
   describe "place_ship(game, player_id, coordinates, orientation) when params are valid" do
-    test "should return {:preparing, game, ship_coordinates} with updated player ships" do
-      player_id = "player1"
-      {:ok, game} = Game.new_game(player_id)
+    setup [:player1_join]
+
+    test "should return {:preparing, game, ship_coordinates} with updated player ships", %{
+      player1_id: player1_id,
+      game: game
+    } do
       coordinates = {0, 0}
       orientation = :horizontal
 
       {:preparing, updated_game, ship_coordinates} =
-        Game.place_ship(game, player_id, coordinates, orientation)
+        Game.place_ship(game, player1_id, coordinates, orientation)
 
       player_ship = Enum.at(updated_game.player1.ships, 0)
 
@@ -71,18 +69,21 @@ defmodule Ships.Core.GameTest do
   end
 
   describe "place_ship(game, player_id, coordinates, orientation) when coordinates were already used" do
-    test "should return {:invalid_coordinates, game, []} with unchanged player" do
-      player_id = "player1"
-      {:ok, game} = Game.new_game(player_id)
+    setup [:player1_join]
+
+    test "should return {:invalid_coordinates, game, []} with unchanged player", %{
+      player1_id: player1_id,
+      game: game
+    } do
       coordinates = {0, 0}
       next_coordinates = {1, 0}
       orientation = :horizontal
 
       {:preparing, updated_game, _ship_coordinates} =
-        Game.place_ship(game, player_id, coordinates, orientation)
+        Game.place_ship(game, player1_id, coordinates, orientation)
 
       {response, game_after, coordinates_after} =
-        Game.place_ship(updated_game, player_id, next_coordinates, orientation)
+        Game.place_ship(updated_game, player1_id, next_coordinates, orientation)
 
       assert coordinates_after == []
       assert response == :invalid_coordinates
@@ -91,14 +92,17 @@ defmodule Ships.Core.GameTest do
   end
 
   describe "place_ship(game, player_id, coordinates, orientation) with invalid coordinates" do
-    test "should return {:invalid_coordinates, game, []} with unchanged player" do
-      player_id = "player1"
-      {:ok, game} = Game.new_game(player_id)
+    setup [:player1_join]
+
+    test "should return {:invalid_coordinates, game, []} with unchanged player", %{
+      player1_id: player1_id,
+      game: game
+    } do
       invalid_coordinates = {-1, 2}
       orientation = :horizontal
 
       {response, game_after, coordinates_after} =
-        Game.place_ship(game, player_id, invalid_coordinates, orientation)
+        Game.place_ship(game, player1_id, invalid_coordinates, orientation)
 
       assert coordinates_after == []
       assert response == :invalid_coordinates
@@ -107,14 +111,17 @@ defmodule Ships.Core.GameTest do
   end
 
   describe "place_ship(game, player_id, coordinates, orientation) when not all ship coordinates belong to board" do
-    test "should return {:invalid_coordinates, game, []} with unchanged player" do
-      player_id = "player1"
-      {:ok, game} = Game.new_game(player_id)
+    setup [:player1_join]
+
+    test "should return {:invalid_coordinates, game, []} with unchanged player", %{
+      player1_id: player1_id,
+      game: game
+    } do
       coordinates = {9, 9}
       orientation = :horizontal
 
       {response, game_after, coordinates_after} =
-        Game.place_ship(game, player_id, coordinates, orientation)
+        Game.place_ship(game, player1_id, coordinates, orientation)
 
       assert coordinates_after == []
       assert response == :invalid_coordinates
@@ -123,18 +130,21 @@ defmodule Ships.Core.GameTest do
   end
 
   describe "place_ship(game, player_id, coordinates, orientation) when ship is too close to another" do
-    test "should return {:invalid_coordinates, game, []} with unchanged player" do
-      player_id = "player1"
-      {:ok, game} = Game.new_game(player_id)
+    setup [:player1_join]
+
+    test "should return {:invalid_coordinates, game, []} with unchanged player", %{
+      player1_id: player1_id,
+      game: game
+    } do
       coordinates = {0, 0}
       next_coordinates = {1, 0}
       orientation = :vertical
 
       {:preparing, updated_game, _coordinates_after} =
-        Game.place_ship(game, player_id, coordinates, orientation)
+        Game.place_ship(game, player1_id, coordinates, orientation)
 
       {response, game_after, coordinates_after} =
-        Game.place_ship(updated_game, player_id, next_coordinates, orientation)
+        Game.place_ship(updated_game, player1_id, next_coordinates, orientation)
 
       assert coordinates_after == []
       assert response == :invalid_coordinates
@@ -341,6 +351,21 @@ defmodule Ships.Core.GameTest do
     end
   end
 
+  defp player1_join(_context) do
+    player1_id = "player_one"
+    {:ok, game} = Game.new_game()
+    {:ok, game} = Game.join_game(game, player1_id)
+
+    %{game: game, player1_id: player1_id}
+  end
+
+  defp player2_join(context) do
+    player2_id = "player_two"
+    {:ok, game} = Game.join_game(context.game, player2_id)
+
+    %{game: game, player2_id: player2_id}
+  end
+
   defp destroy_all_ships(context) do
     {_response, game, _coordinates} = Game.shoot(context.game_all_placed, context.player1, {0, 0})
     {_response, game, _coordinates} = Game.shoot(game, context.player1, {1, 0})
@@ -378,7 +403,8 @@ defmodule Ships.Core.GameTest do
     coordinates = {0, 0}
     player1 = "player1"
     player2 = "player2"
-    {:ok, game} = Game.new_game(player1)
+    {:ok, game} = Game.new_game()
+    {:ok, game} = Game.join_game(game, player1)
     {:ok, game} = Game.join_game(game, player2)
 
     {_response, game, _coordinates_after} =
@@ -393,7 +419,8 @@ defmodule Ships.Core.GameTest do
   defp place_all_ships(_context) do
     player1 = "player1"
     player2 = "player2"
-    {:ok, game} = Game.new_game(player1)
+    {:ok, game} = Game.new_game()
+    {:ok, game} = Game.join_game(game, player1)
     {:ok, game} = Game.join_game(game, player2)
     orientation = :horizontal
 

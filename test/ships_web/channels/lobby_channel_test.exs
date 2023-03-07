@@ -13,23 +13,6 @@ defmodule ShipsWeb.LobbyChannelTest do
     %{socket: socket, socket2: socket2}
   end
 
-  def track_player(context) do
-    game_id = "new_game"
-    Presence.track(context.socket2, game_id, %{})
-    ref = push(context.socket, "new_game", %{})
-
-    %{game_id: game_id, ref: ref}
-  end
-
-  describe "joining channel" do
-    test "should generate and assign user_id string to socket", %{socket: socket} do
-      user_id = socket.assigns.user_id
-
-      assert String.length(user_id) > 0 == true
-      assert String.valid?(user_id) == true
-    end
-  end
-
   describe "new_game when there are none game_ids tracked by Presence" do
     test "replies with status ok", %{socket: socket} do
       ref = push(socket, "new_game", %{})
@@ -71,5 +54,13 @@ defmodule ShipsWeb.LobbyChannelTest do
       assert_reply ref, :ok
       assert_push "game_created", %{game_id: ^game_id}
     end
+  end
+
+  defp track_player(context) do
+    game_id = "new_game"
+    Presence.track(context.socket2, game_id, %{})
+    ref = push(context.socket, "new_game", %{})
+
+    %{game_id: game_id, ref: ref}
   end
 end
