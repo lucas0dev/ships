@@ -14,18 +14,24 @@ defmodule ShipsWeb.LobbyChannel do
   end
 
   @impl true
-  def handle_in("new_game", _payload, socket) do
+  def handle_in("find_game", _payload, socket) do
     games = Map.keys(Presence.list("lobby"))
 
     case games do
       [] ->
         {:ok, game_id, _pid} = GameServer.new_game()
-        Presence.track(self(), "lobby", game_id, %{})
-        push(socket, "game_created", %{game_id: game_id})
+        pid = :erlang.pid_to_list(self())
+        Presence.track(self(), "lobby", game_id, %{pid: pid})
+
+        push(socket, "game_found", %{game_id: game_id})
 
       _ ->
         game_id = Enum.at(games, 0)
-        push(socket, "game_created", %{game_id: game_id})
+        %{metas: [metas]} = Presence.get_by_key("lobby", game_id)
+        game_pid = :erlang.list_to_pid(metas.pid)
+        Presence.untrack(game_pid, "lobby", game_id)
+
+        push(socket, "game_found", %{game_id: game_id})
     end
 
     {:reply, :ok, socket}
