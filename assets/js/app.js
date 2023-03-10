@@ -15,8 +15,13 @@ lobby.on("game_found", (payload) => {
     game_channel = socket.channel(`game:${game_id}`);
     game_channel.join()
     .receive('ok', resp => {
+      game_channel.push("get_next_ship", {});
     })
     .receive('error', resp => {
       lobby.push("find_game", {});
     });
+
+    game_channel.on("place_ship", (payload) => {
+      
+    })
 });

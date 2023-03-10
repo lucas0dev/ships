@@ -73,10 +73,33 @@ defmodule ShipsWeb.GameChannelTest do
     end
   end
 
+  describe "get_next_ship when player has ships to place" do
+    setup [:player1_join]
+
+    test "should push 'place_ship' with ship_size as payload", %{socket: socket} do
+      push(socket, "get_next_ship", %{})
+
+      assert_push "place_ship", %{size: ship_size}
+      assert is_integer(ship_size) == true
+    end
+  end
+
+  describe "get_next_ship when player has already placed all of his ships" do
+    setup [:player1_join, :place_all_ships_p1]
+
+    test "should push 'message' with information about it as payload", %{socket: socket} do
+      push(socket, "get_next_ship", %{})
+
+      assert_push "message", %{message: msg}
+      assert msg == "You already placed all of your ships."
+    end
+  end
+
   defp player1_join(_context) do
     {:ok, socket} = connect(ShipsWeb.UserSocket, %{}, %{})
     {:ok, game_id, pid} = GameServer.new_game()
     {:ok, _, socket} = subscribe_and_join(socket, "game:" <> game_id, %{})
+
     %{socket: socket, pid: pid, game_id: game_id}
   end
 
@@ -86,5 +109,28 @@ defmodule ShipsWeb.GameChannelTest do
     {:ok, _, socket2} = subscribe_and_join(socket2, "game:" <> context.game_id, %{})
 
     %{socket2: socket2, player2_id: player2_id}
+  end
+
+  defp place_all_ships_p1(context) do
+    place_ships(context, context.socket.assigns.user_id)
+  end
+
+  defp place_ships(context, player_id) do
+    game = :sys.get_state(context.pid)
+
+    {player_num, player} =
+      cond do
+        player_id == game.player1.id ->
+          {:player1, %{game.player1 | available_ships: [1], ships: [{0, 0}]}}
+
+        player_id == game.player2.id ->
+          {:player1, %{game.player1 | available_ships: [1], ships: [{0, 0}]}}
+      end
+
+    game = %{game | player_num => player}
+
+    :sys.replace_state(context.pid, fn _state -> game end)
+
+    :ok
   end
 end

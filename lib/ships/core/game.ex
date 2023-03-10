@@ -16,10 +16,7 @@ defmodule Ships.Core.Game do
   end
 
   @spec join_game(%__MODULE__{}, any()) :: {:ok, %__MODULE__{}} | {:error, %__MODULE__{}}
-  def join_game(
-        %__MODULE__{player1: _, player2: _, status: :preparing, turn: _} = game,
-        player_id
-      ) do
+  def join_game(%__MODULE__{status: :preparing} = game, player_id) do
     player = %Player{id: player_id}
 
     cond do
@@ -27,6 +24,21 @@ defmodule Ships.Core.Game do
       game.player2 == nil -> {:ok, %{game | player2: player}}
       true -> {:game_full, game}
     end
+  end
+
+  @spec get_next_ship(%__MODULE__{}, any()) ::
+          {:ok, non_neg_integer()} | {:all_placed, nil} | {:last_ship, non_neg_integer()}
+  def get_next_ship(%__MODULE__{} = game, player_id) do
+    {_player_num, player} = get_player(game, player_id)
+    ship_size = Enum.at(player.available_ships, length(player.ships))
+
+    response =
+      case length(player.available_ships) - length(player.ships) do
+        x when x == 0 -> {:all_placed, nil}
+        x when x >= 1 -> {:ok, ship_size}
+      end
+
+    response
   end
 
   @spec place_ship(%__MODULE__{}, any(), {non_neg_integer(), non_neg_integer()}, atom()) ::
@@ -52,11 +64,11 @@ defmodule Ships.Core.Game do
 
   @spec shoot(%__MODULE__{}, any(), {non_neg_integer(), non_neg_integer()}) ::
           {atom(), %__MODULE__{}, list}
-  def shoot(%__MODULE__{} = game, player_id, coordinates) do
-    {shooter, opponent} = assign_roles(game, player_id)
+  def shoot(%__MODULE__{} = game, shooter_id, coordinates) do
+    {shooter, opponent} = assign_roles(game, shooter_id)
 
     {response, updated_shooter, updated_opponent, response_coordinates} =
-      with :allowed <- is_player_allowed(game, player_id),
+      with :allowed <- is_player_allowed(game, shooter_id),
            false <- already_used?(shooter, coordinates),
            {:hit, updated_shooter, updated_opponent} <-
              take_a_shot(shooter, opponent, coordinates),
@@ -100,7 +112,7 @@ defmodule Ships.Core.Game do
   end
 
   defp all_ships_destroyed(opponent) do
-    case length(opponent.got_hit_at) == Enum.sum(@available_ships) do
+    case length(opponent.got_hit_at) == Enum.sum(opponent.available_ships) do
       true -> :all_destroyed
       false -> :not_yet
     end

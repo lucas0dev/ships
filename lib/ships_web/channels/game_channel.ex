@@ -31,6 +31,20 @@ defmodule ShipsWeb.GameChannel do
     {:noreply, socket}
   end
 
+  @impl true
+  def handle_in("get_next_ship", _payload, socket) do
+    game_id = String.replace(socket.topic, "game:", "")
+    player_id = socket.assigns.user_id
+    {response, ship_size} = GameServer.get_next_ship(game_id, player_id)
+
+    case response do
+      :all_placed -> push(socket, "message", %{message: "You already placed all of your ships."})
+      :ok -> push(socket, "place_ship", %{size: ship_size})
+    end
+
+    {:reply, :ok, socket}
+  end
+
   defp assign_player(game_id) do
     game = Presence.list("game:" <> game_id)
 

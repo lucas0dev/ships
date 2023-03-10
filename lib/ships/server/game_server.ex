@@ -23,6 +23,10 @@ defmodule Ships.Server.GameServer do
     GenServer.call(via_tuple(game_id), {:join_game, player_id})
   end
 
+  def get_next_ship(game_id, player_id) do
+    GenServer.call(via_tuple(game_id), {:get_next_ship, player_id})
+  end
+
   @spec place_ship(any, any, {non_neg_integer(), non_neg_integer()}, atom()) :: {atom(), list()}
   def place_ship(game_id, player_id, coordinates, orientation) do
     GenServer.call(via_tuple(game_id), {:place_ship, player_id, coordinates, orientation})
@@ -59,6 +63,13 @@ defmodule Ships.Server.GameServer do
     {response, state} = Game.join_game(state, player_id)
 
     {:reply, response, state}
+  end
+
+  @impl true
+  def handle_call({:get_next_ship, player_id}, _from, state) do
+    {response, ship_size} = Game.get_next_ship(state, player_id)
+
+    {:reply, {response, ship_size}, state}
   end
 
   @impl true
