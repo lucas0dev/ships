@@ -27,7 +27,13 @@ defmodule Ships.Server.GameServer do
     GenServer.call(via_tuple(game_id), {:get_next_ship, player_id})
   end
 
-  @spec place_ship(any, any, {non_neg_integer(), non_neg_integer()}, atom()) :: {atom(), list()}
+  @spec game_status(any) :: :preparing | :in_progress | :game_over
+  def game_status(game_id) do
+    GenServer.call(via_tuple(game_id), :game_status)
+  end
+
+  @spec place_ship(any, any, {non_neg_integer(), non_neg_integer()}, atom()) ::
+          {:ok | :last_placed | :all_placed | :invalid_coordinates, list}
   def place_ship(game_id, player_id, coordinates, orientation) do
     GenServer.call(via_tuple(game_id), {:place_ship, player_id, coordinates, orientation})
   end
@@ -73,10 +79,18 @@ defmodule Ships.Server.GameServer do
   end
 
   @impl true
-  def handle_call({:place_ship, player_id, coordinates, orientation}, _from, state) do
-    {response, state, ship_coord} = Game.place_ship(state, player_id, coordinates, orientation)
+  def handle_call(:game_status, _from, state) do
+    status = Game.status(state)
 
-    {:reply, {response, ship_coord}, state}
+    {:reply, status, state}
+  end
+
+  @impl true
+  def handle_call({:place_ship, player_id, coordinates, orientation}, _from, state) do
+    {response, state, ship_coordinates} =
+      Game.place_ship(state, player_id, coordinates, orientation)
+
+    {:reply, {response, ship_coordinates}, state}
   end
 
   @impl true

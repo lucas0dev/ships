@@ -19,14 +19,15 @@ defmodule ShipsWeb.LobbyChannelTest do
       assert_reply ref, :ok
     end
 
-    test "pushes event 'game_found' with generated game_id", %{socket: socket} do
+    test "pushes event 'game_found' with generated game_id and players assignment as 'player1'",
+         %{socket: socket} do
       push(socket, "find_game", %{})
-      assert_push "game_found", %{game_id: _game_id}
+      assert_push "game_found", %{player: "player1", game_id: _game_id}
     end
 
     test "makes Presence track socket with game_id", %{socket: socket} do
       ref = push(socket, "find_game", %{})
-      assert_push "game_found", %{game_id: game_id}
+      assert_push "game_found", %{player: "player1", game_id: game_id}
       assert_reply ref, :ok
       presence_list = Presence.list("lobby")
 
@@ -45,37 +46,38 @@ defmodule ShipsWeb.LobbyChannelTest do
   end
 
   describe "find_game when there is already game tracked by Presence" do
-    setup [:player1_find_game, :player2_find_game]
+    test "replies with status ok", %{socket: socket, socket2: socket2} do
+      push(socket, "find_game", %{})
+      assert_push "game_found", %{player: _player, game_id: _game_id}
+      ref = push(socket2, "find_game", %{})
 
-    test "replies with status ok", %{ref: ref} do
       assert_reply ref, :ok
     end
 
-    test "pushes event 'game_found' with existing game_id", %{game_id: game_id, ref: ref} do
+    test "pushes event 'game_found' with existing game_id and player assignment as 'player2'", %{
+      socket: socket,
+      socket2: socket2
+    } do
+      push(socket, "find_game", %{})
+      assert_push "game_found", %{player: "player1", game_id: _game_id}
+      ref = push(socket2, "find_game", %{})
+
       assert_reply ref, :ok
-      assert_push "game_found", %{game_id: ^game_id}
+      assert_push "game_found", %{player: "player2", game_id: _game_id}
     end
 
-    test "makes Presence untrack process that created a new game", %{game_id: game_id, ref: ref} do
+    test "makes Presence untrack process that created a new game", %{
+      socket: socket,
+      socket2: socket2
+    } do
+      push(socket, "find_game", %{})
+      assert_push "game_found", %{player: _player, game_id: game_id}
+      ref = push(socket2, "find_game", %{})
       assert_reply ref, :ok
-      assert_push "game_found", %{game_id: ^game_id}
 
       result = Presence.get_by_key("lobby", game_id)
 
       assert result == []
     end
-  end
-
-  def player1_find_game(context) do
-    push(context.socket, "find_game", %{})
-    assert_push "game_found", %{game_id: game_id}
-
-    %{game_id: game_id}
-  end
-
-  def player2_find_game(context) do
-    ref = push(context.socket2, "find_game", %{})
-
-    %{ref: ref}
   end
 end

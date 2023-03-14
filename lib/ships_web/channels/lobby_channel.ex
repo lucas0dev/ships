@@ -1,6 +1,6 @@
 defmodule ShipsWeb.LobbyChannel do
   @moduledoc """
-  Channel is responsible for finding and joining a game with only 1 player.
+  Channel is responsible for creating new game or finding and joining a game with only 1 player.
   """
 
   use ShipsWeb, :channel
@@ -23,7 +23,7 @@ defmodule ShipsWeb.LobbyChannel do
         pid = :erlang.pid_to_list(self())
         Presence.track(self(), "lobby", game_id, %{pid: pid})
 
-        push(socket, "game_found", %{game_id: game_id})
+        push(socket, "game_found", %{player: "player1", game_id: game_id})
 
       _ ->
         game_id = Enum.at(games, 0)
@@ -31,7 +31,7 @@ defmodule ShipsWeb.LobbyChannel do
         game_pid = :erlang.list_to_pid(metas.pid)
         Presence.untrack(game_pid, "lobby", game_id)
 
-        push(socket, "game_found", %{game_id: game_id})
+        push(socket, "game_found", %{player: "player2", game_id: game_id})
     end
 
     {:reply, :ok, socket}

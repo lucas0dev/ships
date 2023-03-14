@@ -151,3 +151,27 @@
   flex-direction: column;
   width: 100%;
 }
+
+.hovered {
+  background-color: #31708f;
+}
+
+.hidden {
+  display: none;
+}
+
+.ship {
+  background-color: green;
+}
+
+#messages{
+  display: flex;
+  padding: 5px;
+  height: 50px;
+  justify-content: center;
+  align-items: center;
+}
+
+.new-message{
+  background-color: yellow;
+}

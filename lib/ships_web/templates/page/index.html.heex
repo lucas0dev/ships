@@ -1,9 +1,8 @@
-<div class="messages">
-</div>
+<div id="messages"></div>
 <div class="boards">
     <div class="board-container">
         <p class="board-label"> YOUR BOARD </p>
-        <div class="board player-board">
+        <div class="board" id="player-board">
             <%= for row <- @row do %>
             <div class={"row  row#{row}"}>
                 <%= for col <- @col do %>
@@ -15,7 +14,7 @@
     </div>
     <div class="board-container">
         <p class="board-label"> ENEMY BOARD </p>
-        <div class="board enemy-board">
+        <div class="board" id="enemy-board">
             <%= for row <- @row do %>
             <div class={"row row#{row}"}>
                 <%= for col <- @col do %>

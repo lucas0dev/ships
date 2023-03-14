@@ -32,32 +32,31 @@ defmodule Ships.Core.Game do
     {_player_num, player} = get_player(game, player_id)
     ship_size = Enum.at(player.available_ships, length(player.ships))
 
-    response =
-      case length(player.available_ships) - length(player.ships) do
-        x when x == 0 -> {:all_placed, nil}
-        x when x >= 1 -> {:ok, ship_size}
-      end
-
-    response
+    case length(player.available_ships) - length(player.ships) do
+      x when x == 0 -> {:all_placed, nil}
+      x when x >= 1 -> {:ok, ship_size}
+    end
   end
 
   @spec place_ship(%__MODULE__{}, any(), {non_neg_integer(), non_neg_integer()}, atom()) ::
-          {atom(), %__MODULE__{}, list}
+          {:ok | :last_placed | :all_placed | :invalid_coordinates, %__MODULE__{}, list}
   def place_ship(%__MODULE__{} = game, player_id, coordinates, orientation) do
     {player_num, player} = get_player(game, player_id)
 
     {response, updated_player, ship_coordinates} =
-      with {:ok, size} <- next_ship_size(player),
+      with {response, size} <- next_ship_size(player),
            true <- in_board_range?(coordinates, size, orientation),
            {:ok, ship} <- Ship.new(coordinates, size, orientation),
-           {:ok, player} <- add_ship(player, ship) do
-        {player.status, player, ship.coordinates}
+           {:ok, player} <- add_ship(player, ship),
+           player <- update_status(player, response) do
+        {response, player, ship.coordinates}
       else
         :all_placed -> {:all_placed, player, []}
         _ -> {:invalid_coordinates, player, []}
       end
 
     game = Map.replace(game, player_num, updated_player)
+    game = update_game_status(game)
 
     {response, game, ship_coordinates}
   end
@@ -87,6 +86,39 @@ defmodule Ships.Core.Game do
       |> assign_next_turn(response)
 
     {response, game, response_coordinates}
+  end
+
+  @spec status(%__MODULE__{}) :: :preparing | :in_progress | :game_over
+  def status(%__MODULE__{} = game) do
+    game.status
+  end
+
+  defp update_game_status(game) do
+    case check_players(game) do
+      :ready -> Map.replace(game, :status, :in_progress)
+      :not_ready -> game
+    end
+  end
+
+  defp check_players(game) do
+    with :ready <- get_status(game.player1),
+         :ready <- get_status(game.player2) do
+      :ready
+    else
+      _ -> :not_ready
+    end
+  end
+
+  defp update_status(player, status) do
+    if status == :last_placed do
+      Map.update!(player, :status, fn _ -> :ready end)
+    else
+      player
+    end
+  end
+
+  defp get_status(player) do
+    if player, do: player.status, else: nil
   end
 
   defp is_player_allowed(game, player_id) do
@@ -240,7 +272,8 @@ defmodule Ships.Core.Game do
     size = Enum.at(player.available_ships, length(player.ships))
 
     case length(player.available_ships) - length(player.ships) do
-      x when x >= 1 -> {:ok, size}
+      x when x > 1 -> {:ok, size}
+      x when x == 1 -> {:last_placed, size}
       _ -> :all_placed
     end
   end

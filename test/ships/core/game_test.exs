@@ -75,14 +75,14 @@ defmodule Ships.Core.GameTest do
   describe "place_ship(game, player_id, coordinates, orientation) when params are valid" do
     setup [:player1_join]
 
-    test "should return {:preparing, game, ship_coordinates} with updated player ships", %{
+    test "should return {:ok, game, ship_coordinates} with updated player ships", %{
       player1_id: player1_id,
       game: game
     } do
       coordinates = {0, 0}
       orientation = :horizontal
 
-      {:preparing, updated_game, ship_coordinates} =
+      {:ok, updated_game, ship_coordinates} =
         Game.place_ship(game, player1_id, coordinates, orientation)
 
       player_ship = Enum.at(updated_game.player1.ships, 0)
@@ -104,7 +104,7 @@ defmodule Ships.Core.GameTest do
       next_coordinates = {1, 0}
       orientation = :horizontal
 
-      {:preparing, updated_game, _ship_coordinates} =
+      {:ok, updated_game, _ship_coordinates} =
         Game.place_ship(game, player1_id, coordinates, orientation)
 
       {response, game_after, coordinates_after} =
@@ -165,7 +165,7 @@ defmodule Ships.Core.GameTest do
       next_coordinates = {1, 0}
       orientation = :vertical
 
-      {:preparing, updated_game, _coordinates_after} =
+      {:ok, updated_game, _coordinates_after} =
         Game.place_ship(game, player1_id, coordinates, orientation)
 
       {response, game_after, coordinates_after} =
@@ -192,9 +192,27 @@ defmodule Ships.Core.GameTest do
   describe "place_ship(game, player_id, coordinates, orientation) when player places his last ship" do
     setup [:place_all_ships]
 
+    test "should return {:last_placed, game, ship_coordinates}", context do
+      {response, _reponse_game, _coordinates_after} =
+        Game.place_ship(context.game, context.player1_id, {8, 8}, :horizontal)
+
+      assert response == :last_placed
+    end
+
     test "should change player's status to :ready", context do
       assert context.game.player1.status != context.game_all_placed.player1.status
       assert context.game_all_placed.player1.status == :ready
+    end
+  end
+
+  describe "place_ship(game, player_id, coordinates, orientation) when both players placed all of their ships" do
+    setup [:place_all_ships]
+
+    test "should change game status to :in_progress", context do
+      {_response, game, _coordinates_after} =
+        Game.place_ship(context.game_all_placed, context.player1_id, {8, 8}, :horizontal)
+
+      assert game.status == :in_progress
     end
   end
 
@@ -376,6 +394,14 @@ defmodule Ships.Core.GameTest do
       opponent = game.player2
 
       assert opponent.got_hit_at == []
+    end
+  end
+
+  describe "status(game)" do
+    test "should return game's status" do
+      game = %Game{status: :preparing}
+
+      assert Game.status(game) == :preparing
     end
   end
 
