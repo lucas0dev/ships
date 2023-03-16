@@ -18,16 +18,20 @@ defmodule ShipsWeb.GameChannel do
   def handle_info({:after_join, game_id}, socket) do
     player_id = socket.assigns.user_id
 
-    with {:ok, player_num} <- assign_player(game_id),
-         :ok <- GameServer.join_game(game_id, player_id) do
-      Presence.track(self(), "game:" <> game_id, player_num, %{id: player_id})
-      {:ok, ship_size} = GameServer.get_next_ship(game_id, player_id)
+    socket =
+      with {:ok, player_num} <- assign_player(game_id),
+           :ok <- GameServer.join_game(game_id, player_id) do
+        Presence.track(self(), "game:" <> game_id, player_num, %{id: player_id})
+        {:ok, ship_size} = GameServer.get_next_ship(game_id, player_num)
 
-      push(socket, "place_ship", %{size: ship_size})
-      broadcast(socket, "player_joined", %{player: Atom.to_string(player_num)})
-    else
-      _ -> push(socket, "unable_to_join", %{})
-    end
+        push(socket, "place_ship", %{size: ship_size})
+        broadcast(socket, "player_joined", %{player: Atom.to_string(player_num)})
+        assign(socket, :player_num, player_num)
+      else
+        _ ->
+          push(socket, "unable_to_join", %{})
+          socket
+      end
 
     {:noreply, socket}
   end
@@ -48,15 +52,15 @@ defmodule ShipsWeb.GameChannel do
       )
       when is_integer(x) and is_integer(y) do
     game_id = String.replace(socket.topic, "game:", "")
-    player_id = socket.assigns.user_id
+    player_num = socket.assigns.player_num
     coordinates = {x, y}
     orientation = String.to_atom(orientation)
 
     {result, ship_coordinates} =
-      GameServer.place_ship(game_id, player_id, coordinates, orientation)
+      GameServer.place_ship(game_id, player_num, coordinates, orientation)
 
     ship_coordinates = for coordinates <- ship_coordinates, do: Tuple.to_list(coordinates)
-    {_response, next_ship_size} = GameServer.get_next_ship(game_id, player_id)
+    {_response, next_ship_size} = GameServer.get_next_ship(game_id, player_num)
 
     case result do
       :ok ->
@@ -85,8 +89,8 @@ defmodule ShipsWeb.GameChannel do
 
   def handle_in("place_ship", _payload, socket) do
     game_id = String.replace(socket.topic, "game:", "")
-    player_id = socket.assigns.user_id
-    {_response, next_ship_size} = GameServer.get_next_ship(game_id, player_id)
+    player_num = socket.assigns.player_num
+    {_response, next_ship_size} = GameServer.get_next_ship(game_id, player_num)
 
     push(socket, "message", %{message: "Something wen't wrong. Try again."})
     push(socket, "place_ship", %{size: next_ship_size})

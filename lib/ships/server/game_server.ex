@@ -23,8 +23,8 @@ defmodule Ships.Server.GameServer do
     GenServer.call(via_tuple(game_id), {:join_game, player_id})
   end
 
-  def get_next_ship(game_id, player_id) do
-    GenServer.call(via_tuple(game_id), {:get_next_ship, player_id})
+  def get_next_ship(game_id, player_num) do
+    GenServer.call(via_tuple(game_id), {:get_next_ship, player_num})
   end
 
   @spec game_status(any) :: :preparing | :in_progress | :game_over
@@ -34,13 +34,13 @@ defmodule Ships.Server.GameServer do
 
   @spec place_ship(any, any, {non_neg_integer(), non_neg_integer()}, atom()) ::
           {:ok | :last_placed | :all_placed | :invalid_coordinates, list}
-  def place_ship(game_id, player_id, coordinates, orientation) do
-    GenServer.call(via_tuple(game_id), {:place_ship, player_id, coordinates, orientation})
+  def place_ship(game_id, player_num, coordinates, orientation) do
+    GenServer.call(via_tuple(game_id), {:place_ship, player_num, coordinates, orientation})
   end
 
-  @spec shoot(any, any, any) :: any
-  def shoot(game_id, player_id, coordinates) do
-    GenServer.call(via_tuple(game_id), {:shoot, player_id, coordinates})
+  @spec shoot(any, any, any) :: {atom(), atom(), list}
+  def shoot(game_id, player_num, coordinates) do
+    GenServer.call(via_tuple(game_id), {:shoot, player_num, coordinates})
   end
 
   @impl true
@@ -72,8 +72,8 @@ defmodule Ships.Server.GameServer do
   end
 
   @impl true
-  def handle_call({:get_next_ship, player_id}, _from, state) do
-    {response, ship_size} = Game.get_next_ship(state, player_id)
+  def handle_call({:get_next_ship, player_num}, _from, state) do
+    {response, ship_size} = Game.get_next_ship(state, player_num)
 
     {:reply, {response, ship_size}, state}
   end
@@ -86,18 +86,18 @@ defmodule Ships.Server.GameServer do
   end
 
   @impl true
-  def handle_call({:place_ship, player_id, coordinates, orientation}, _from, state) do
+  def handle_call({:place_ship, player_num, coordinates, orientation}, _from, state) do
     {response, state, ship_coordinates} =
-      Game.place_ship(state, player_id, coordinates, orientation)
+      Game.place_ship(state, player_num, coordinates, orientation)
 
     {:reply, {response, ship_coordinates}, state}
   end
 
   @impl true
-  def handle_call({:shoot, player_id, coordinates}, _from, state) do
-    {response, state, shot_coordinates} = Game.shoot(state, player_id, coordinates)
+  def handle_call({:shoot, player_num, coordinates}, _from, state) do
+    {response, state, shot_coordinates} = Game.shoot(state, player_num, coordinates)
 
-    {:reply, {response, shot_coordinates}, state}
+    {:reply, {response, state.turn, shot_coordinates}, state}
   end
 
   defp via_tuple(game_id) do

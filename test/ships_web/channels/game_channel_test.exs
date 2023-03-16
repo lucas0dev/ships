@@ -28,6 +28,10 @@ defmodule ShipsWeb.GameChannelTest do
       assert_broadcast "player_joined", %{player: "player1"}
     end
 
+    test "should store player_num in a socket as :player1", %{socket: socket} do
+      assert socket.assigns.player_num == :player1
+    end
+
     test "pushes event 'place_ship' with ship size as a payload" do
       assert_push "place_ship", %{size: size}
       assert is_integer(size) == true
@@ -52,6 +56,10 @@ defmodule ShipsWeb.GameChannelTest do
       %{"player2" => %{metas: [game_data]}} = Presence.list("game:" <> game_id)
 
       assert game_data.id == user_id
+    end
+
+    test "should store player_num in a socket as :player2", %{socket2: socket2} do
+      assert socket2.assigns.player_num == :player2
     end
 
     test "broadcasts event 'player_joined' with specifying which player joined" do
@@ -199,7 +207,7 @@ defmodule ShipsWeb.GameChannelTest do
     {:ok, _, socket} = subscribe_and_join(socket, "game:" <> game_id, %{})
 
     game = :sys.get_state(pid)
-    player1 = %{game.player1 | available_ships: [1, 1, 2], ships: [{0, 0}]}
+    player1 = %{game.player1 | available_ships: [1, 1, 2], ships: [[{0, 0}]]}
     game = %{game | player1: player1}
     :sys.replace_state(pid, fn _state -> game end)
 
@@ -212,7 +220,14 @@ defmodule ShipsWeb.GameChannelTest do
     {:ok, _, socket2} = subscribe_and_join(socket2, "game:" <> context.game_id, %{})
 
     game = :sys.get_state(context.pid)
-    player2 = %{game.player2 | status: :ready, available_ships: [1, 1], ships: [{0, 0}, {2, 2}]}
+
+    player2 = %{
+      game.player2
+      | status: :ready,
+        available_ships: [1, 2],
+        ships: [[{0, 0}], [{2, 2}, {3, 2}]]
+    }
+
     game = %{game | player2: player2}
     :sys.replace_state(context.pid, fn _state -> game end)
 
@@ -221,7 +236,14 @@ defmodule ShipsWeb.GameChannelTest do
 
   defp place_last_ship_p1(context) do
     game = :sys.get_state(context.pid)
-    player1 = %{game.player1 | available_ships: [1, 1, 1], ships: [{0, 0}, {2, 2}, {4, 4}]}
+
+    player1 = %{
+      game.player1
+      | status: :ready,
+        available_ships: [1, 1, 1],
+        ships: [[{0, 0}], [{2, 2}], [{4, 4}]]
+    }
+
     game = %{game | player1: player1}
     :sys.replace_state(context.pid, fn _state -> game end)
     :ok
