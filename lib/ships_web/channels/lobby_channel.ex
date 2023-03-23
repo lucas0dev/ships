@@ -22,7 +22,6 @@ defmodule ShipsWeb.LobbyChannel do
         {:ok, game_id, _pid} = GameServer.new_game()
         pid = :erlang.pid_to_list(self())
         Presence.track(self(), "lobby", game_id, %{pid: pid})
-
         push(socket, "game_found", %{player: "player1", game_id: game_id})
 
       _ ->

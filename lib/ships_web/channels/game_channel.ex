@@ -23,7 +23,6 @@ defmodule ShipsWeb.GameChannel do
            :ok <- GameServer.join_game(game_id, player_id) do
         Presence.track(self(), "game:" <> game_id, player_num, %{id: player_id})
         {:ok, ship_size} = GameServer.get_next_ship(game_id, player_num)
-
         push(socket, "place_ship", %{size: ship_size})
         broadcast(socket, "player_joined", %{player: Atom.to_string(player_num)})
         assign(socket, :player_num, player_num)
@@ -51,7 +50,7 @@ defmodule ShipsWeb.GameChannel do
         socket
       )
       when is_integer(x) and is_integer(y) do
-    game_id = String.replace(socket.topic, "game:", "")
+    game_id = id_from_topic(socket.topic)
     player_num = socket.assigns.player_num
     coordinates = {x, y}
     orientation = String.to_atom(orientation)
@@ -81,14 +80,14 @@ defmodule ShipsWeb.GameChannel do
           message: "All of your ships have been placed. Wait for the game to begin."
         })
 
-        push(socket, "ship_placed", %{coordinates: ship_coordinates})
+        push(socket, "ship_placed", %{last: "true", coordinates: ship_coordinates})
     end
 
     {:reply, :ok, socket}
   end
 
   def handle_in("place_ship", _payload, socket) do
-    game_id = String.replace(socket.topic, "game:", "")
+    game_id = id_from_topic(socket.topic)
     player_num = socket.assigns.player_num
     {_response, next_ship_size} = GameServer.get_next_ship(game_id, player_num)
 
@@ -96,6 +95,71 @@ defmodule ShipsWeb.GameChannel do
     push(socket, "place_ship", %{size: next_ship_size})
 
     {:reply, :ok, socket}
+  end
+
+  @impl true
+  def handle_in("shoot", %{"x" => x, "y" => y}, socket) when is_integer(x) and is_integer(y) do
+    game_id = id_from_topic(socket.topic)
+    player_num = socket.assigns.player_num
+    coordinates = {x, y}
+
+    {response, next_turn, response_coordinates} =
+      GameServer.shoot(game_id, player_num, coordinates)
+
+    coordinates = transform_coordinates(response_coordinates)
+
+    cond do
+      response in [:hit, :destroyed] ->
+        broadcast(socket, "board_update", %{
+          result: response,
+          shooter: player_num,
+          coordinates: coordinates
+        })
+
+        broadcast(socket, "next_turn", %{turn: next_turn})
+
+      response == :used ->
+        push(socket, "message", %{
+          message: "You've already shot at this cell. Choose another one."
+        })
+
+        push(socket, "next_turn", %{turn: next_turn})
+
+      response == :not_your_turn ->
+        push(socket, "message", %{message: "You can't do that, wait for your turn."})
+
+      response == :miss ->
+        broadcast(socket, "board_update", %{
+          result: response,
+          shooter: player_num,
+          coordinates: coordinates
+        })
+
+        broadcast(socket, "next_turn", %{turn: next_turn})
+
+      response == :game_over ->
+        broadcast(socket, "board_update", %{
+          result: response,
+          shooter: player_num,
+          coordinates: coordinates
+        })
+    end
+
+    {:reply, :ok, socket}
+  end
+
+  def handle_in("shoot", _payload, socket) do
+    game_id = id_from_topic(socket.topic)
+    next_turn = GameServer.get_next_turn(game_id)
+
+    push(socket, "message", %{message: "Something wen't wrong. Try again."})
+    push(socket, "next_turn", %{turn: next_turn})
+
+    {:reply, :ok, socket}
+  end
+
+  defp transform_coordinates(coordinates) do
+    for {x, y} <- coordinates, do: [x, y]
   end
 
   defp assign_player(game_id) do
@@ -108,5 +172,9 @@ defmodule ShipsWeb.GameChannel do
       false -> {:ok, :player1}
       _ -> {:error, Map.keys(game)}
     end
+  end
+
+  defp id_from_topic(topic) do
+    String.replace(topic, "game:", "")
   end
 end

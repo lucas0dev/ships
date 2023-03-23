@@ -3,23 +3,24 @@ import socket from "./user_socket.js"
 import "phoenix_html"
 
 let lobby = socket.channel('lobby');
-let player = "";
+let player_num = "";
 let selectedCell = [];
 let orientation = "horizontal";
 let player_board = document.getElementById("player-board");
 let enemy_board = document.getElementById("enemy-board");
 let message_block = document.getElementById("messages");
+let current_board = player_board;
 
 socket.connect();
 joinLobby();
 
 lobby.on("game_found", (payload) => {
     game_id = payload.game_id;
-    player = payload.player;
+    player_num = payload.player;
     game_channel = socket.channel(`game:${game_id}`);
     game_channel.join()
     .receive('ok', resp => {
-      lobby.leave();
+      
       addListeners(player_board);
     })
     .receive('error', resp => {
@@ -35,16 +36,50 @@ lobby.on("game_found", (payload) => {
       ship_size = payload.size;
     });
     game_channel.on("ship_placed", (payload) => {
+      console.log(payload);
       placeOnBoard(payload.coordinates)
       if(payload.last == "true"){
         removeListeners(player_board);
+        current_board = enemy_board;
+      }
+    });
+    game_channel.on("next_turn", (payload) => {
+      selectBoard(payload.turn);
+      if(payload.turn == player_num){
+        enemy_board.addEventListener('mouseover', highlightCell)
+        enemy_board.addEventListener('click', shootEnemy)
       }
     });
     game_channel.on("message", (payload) => {
       message_block.innerHTML = payload.message;
       message_block.classList.add("new-message");
     });
+    game_channel.on("board_update", (payload) => {
+      updateBoard(payload);
+    });
 });
+
+function selectBoard(turn){
+  if(turn == player_num){
+    player_board.classList.remove("active-board");
+    enemy_board.classList.add("active-board");
+  } else {
+    player_board.classList.add("active-board");
+    enemy_board.classList.remove("active-board");
+  }
+}
+
+function updateBoard(data){
+  console.log(data)
+  let board = (data.shooter == player_num) ? enemy_board : player_board;
+  let cell_class = data.result;
+  for(var i = 0; i < data.coordinates.length; i++) {
+    [col, row] = data.coordinates[i]
+    if (row >= 0 && row <= 9 && col >= 0 && col <= 9) {
+      board.getElementsByClassName(`cell${row}${col}`)[0].classList.add(cell_class);
+    }
+  }
+}
 
 function joinLobby() {
   lobby.join().receive('ok', resp => {
@@ -56,14 +91,14 @@ function addListeners(target){
   window.addEventListener('keydown', changeOrientation); 
   target.addEventListener('click', placeShip);
   target.addEventListener('auxclick', changeOrientation);
-  target.addEventListener('mouseover', selectCell);
+  target.addEventListener('mouseover', highlightCells);
 }
 
 function removeListeners(target){
   window.removeEventListener('keydown', changeOrientation); 
   target.removeEventListener('click', placeShip);
   target.removeEventListener('auxclick', changeOrientation);
-  target.removeEventListener('mouseover', selectCell);
+  target.removeEventListener('mouseover', highlightCells);
 }
 
 function changeOrientation(event){
@@ -93,7 +128,7 @@ function placeShip(event) {
   }
 }
 
-function selectCell(event) {
+function highlightCells(event) {
   selectedCell = event.target;
   addShipShape(selectedCell);
   selectedCell.onmouseleave = function() { 
@@ -102,18 +137,29 @@ function selectCell(event) {
   }
 }
 
+function highlightCell(event) {
+  if(event.target.classList.contains("col")){
+    let cell = event.target;
+    console.log(cell);
+    cell.classList.add("hovered");
+    cell.onmouseleave = function() { 
+      cell.classList.remove("hovered");
+    }
+  }
+}
+
 function addShipShape(cell){
   ship_cells = getShipCells(cell, orientation)
   for(var i = 0; i < ship_cells.length; i++) {
-    [col, row] = ship_cells [i]
+    [col, row] = ship_cells[i]
     if (row >= 0 && row <= 9 && col >= 0 && col <= 9) {
-      document.getElementsByClassName(`cell${row}${col}`)[0].classList.add("hovered");
+      current_board.getElementsByClassName(`cell${row}${col}`)[0].classList.add("hovered");
     }
   }
 }
 
 function removeShipShape(){
-  let hovered = document.getElementsByClassName("hovered");
+  let hovered = current_board.getElementsByClassName("hovered");
   while(hovered.length > 0){
     hovered[0].classList.remove('hovered');
   }
@@ -138,8 +184,17 @@ function getShipCells(root_cell, orientation){
 function placeOnBoard(shipCoordinates){
   for(var i = 0; i < shipCoordinates.length; i++) {
     [col, row] = shipCoordinates[i]
-    document.getElementsByClassName(`cell${row}${col}`)[0].classList.add("ship");
+    player_board.getElementsByClassName(`cell${row}${col}`)[0].classList.add("ship");
   }
+}
+
+function shootEnemy(event) {
+  var classname = event.target.className.split(" ");
+  y =  parseInt(classname[1].slice(-2, -1));
+  x =  parseInt(classname[1].slice(-1));
+  game_channel.push("shoot", {x: x, y: y})
+  enemy_board.removeEventListener('click', shootEnemy);
+  enemy_board.removeEventListener('mouseover', highlightCell);
 }
 
 function removeMessage(){

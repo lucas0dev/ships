@@ -396,6 +396,15 @@ defmodule Ships.Core.GameTest do
     end
   end
 
+  describe "get_next_turn(game)" do
+    test "should return which player's turn is next" do
+      game = %Game{}
+      response = Game.get_next_turn(game)
+
+      assert response == game.turn
+    end
+  end
+
   describe "status(game)" do
     test "should return game's status" do
       game = %Game{status: :preparing}

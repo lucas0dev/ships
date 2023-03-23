@@ -27,6 +27,10 @@ defmodule Ships.Server.GameServer do
     GenServer.call(via_tuple(game_id), {:get_next_ship, player_num})
   end
 
+  def get_next_turn(game_id) do
+    GenServer.call(via_tuple(game_id), :get_next_turn)
+  end
+
   @spec game_status(any) :: :preparing | :in_progress | :game_over
   def game_status(game_id) do
     GenServer.call(via_tuple(game_id), :game_status)
@@ -76,6 +80,13 @@ defmodule Ships.Server.GameServer do
     {response, ship_size} = Game.get_next_ship(state, player_num)
 
     {:reply, {response, ship_size}, state}
+  end
+
+  @impl true
+  def handle_call(:get_next_turn, _from, state) do
+    next_turn = Game.get_next_turn(state)
+
+    {:reply, next_turn, state}
   end
 
   @impl true

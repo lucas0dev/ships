@@ -201,6 +201,164 @@ defmodule ShipsWeb.GameChannelTest do
     end
   end
 
+  describe "shoot(%{'x' => x, 'y' => y}) when ship was hit" do
+    setup [:player1_join, :player2_join, :place_last_ship_p1, :flush_messages]
+
+    test "should broadcast 'board_update' event with :hit response", %{socket: socket} do
+      x = 2
+      y = 2
+      push(socket, "shoot", %{"x" => x, "y" => y})
+      shooter = socket.assigns.player_num
+
+      assert_broadcast "board_update", %{
+        result: :hit,
+        shooter: ^shooter,
+        coordinates: [[^x, ^y]]
+      }
+    end
+
+    test "should broadcast 'next_turn' event turn: :player1 as a payload", %{socket: socket} do
+      x = 2
+      y = 2
+      push(socket, "shoot", %{"x" => x, "y" => y})
+      shooter = socket.assigns.player_num
+
+      assert_broadcast "next_turn", %{
+        turn: ^shooter
+      }
+    end
+  end
+
+  describe "shoot(%{'x' => x, 'y' => y}) when ship was destroyed" do
+    setup [:player1_join, :player2_join, :place_last_ship_p1, :flush_messages]
+
+    test "should broadcast 'board_update' event with :destroyed response", %{socket: socket} do
+      x = 2
+      y = 2
+      push(socket, "shoot", %{"x" => x, "y" => y})
+      push(socket, "shoot", %{"x" => x + 1, "y" => y})
+      shooter = socket.assigns.player_num
+      ship_coordinates = [[x, y], [x + 1, y]]
+
+      assert_broadcast "board_update", %{
+        result: :destroyed,
+        shooter: ^shooter,
+        coordinates: ^ship_coordinates
+      }
+    end
+
+    test "should broadcast 'next_turn' event turn: :player1 as a payload", %{socket: socket} do
+      x = 2
+      y = 2
+      push(socket, "shoot", %{"x" => x, "y" => y})
+      push(socket, "shoot", %{"x" => x + 1, "y" => y})
+      shooter = socket.assigns.player_num
+
+      assert_broadcast "next_turn", %{
+        turn: ^shooter
+      }
+    end
+  end
+
+  describe "shoot(%{'x' => x, 'y' => y}) when its opposite player turn" do
+    setup [:player1_join, :player2_join, :place_last_ship_p1, :flush_messages]
+
+    test "should push 'message' event 'You can't do that, wait for your turn' message", %{
+      socket2: socket2
+    } do
+      x = 2
+      y = 2
+      push(socket2, "shoot", %{"x" => x, "y" => y})
+
+      assert_push "message", %{message: "You can't do that, wait for your turn."}
+    end
+  end
+
+  describe "shoot(%{'x' => x, 'y' => y}) when player didn't hit a ship" do
+    setup [:player1_join, :player2_join, :place_last_ship_p1, :flush_messages]
+
+    test "should broadcast 'board_update' event with :miss response", %{socket: socket} do
+      x = 5
+      y = 5
+      push(socket, "shoot", %{"x" => x, "y" => y})
+      shooter = socket.assigns.player_num
+
+      assert_broadcast "board_update", %{
+        result: :miss,
+        shooter: ^shooter,
+        coordinates: _coordinates
+      }
+    end
+
+    test "should broadcast 'next_turn' event turn: :player2 as a payload", %{socket: socket} do
+      x = 5
+      y = 5
+      push(socket, "shoot", %{"x" => x, "y" => y})
+
+      assert_broadcast "next_turn", %{
+        turn: :player2
+      }
+    end
+  end
+
+  describe "shoot(%{'x' => x, 'y' => y}) when player destroyed all of the opponent ships" do
+    setup [:player1_join, :player2_join, :place_last_ship_p1, :flush_messages]
+
+    test "should broadcast 'board_update' event with :game_over response", %{socket: socket} do
+      push(socket, "shoot", %{"x" => 0, "y" => 0})
+      push(socket, "shoot", %{"x" => 2, "y" => 2})
+      push(socket, "shoot", %{"x" => 3, "y" => 2})
+      shooter = socket.assigns.player_num
+
+      assert_broadcast "board_update", %{
+        result: :game_over,
+        shooter: ^shooter,
+        coordinates: _coordinates
+      }
+    end
+  end
+
+  describe "shoot(%{'x' => x, 'y' => y}) with invalid parameters" do
+    setup [:player1_join, :player2_join, :place_last_ship_p1, :flush_messages]
+
+    test "should push message event with 'Something wen't wrong. Try again.' message", %{
+      socket: socket
+    } do
+      push(socket, "shoot", %{"y" => 2})
+
+      assert_push "message", %{message: "Something wen't wrong. Try again."}
+    end
+
+    test "should push next_turn event with next player's turn", %{socket: socket} do
+      push(socket, "shoot", %{"y" => 2})
+
+      assert_push "next_turn", %{turn: :player1}
+    end
+  end
+
+  describe "shoot(%{'x' => x, 'y' => y}) when player already shot at chosen coordinates" do
+    setup [:player1_join, :player2_join, :place_last_ship_p1, :flush_messages]
+
+    test "should push message event with 'You've already shot at this cell. Choose another one.' message",
+         %{
+           socket: socket
+         } do
+      push(socket, "shoot", %{"x" => 0, "y" => 0})
+      flush_messages()
+      push(socket, "shoot", %{"x" => 0, "y" => 0})
+
+      assert_push "message", %{message: "You've already shot at this cell. Choose another one."}
+    end
+
+    test "should push next_turn event with next player's turn", %{socket: socket} do
+      push(socket, "shoot", %{"x" => 0, "y" => 0})
+      flush_messages()
+      push(socket, "shoot", %{"x" => 0, "y" => 0})
+
+      assert_push "next_turn", %{turn: :player1}
+    end
+  end
+
   defp player1_join(_context) do
     {:ok, socket} = connect(ShipsWeb.UserSocket, %{}, %{})
     {:ok, game_id, pid} = GameServer.new_game()

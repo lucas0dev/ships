@@ -37,6 +37,11 @@ defmodule Ships.Core.Game do
     end
   end
 
+  @spec get_next_turn(%__MODULE__{}) :: :player1 | :player2
+  def get_next_turn(%__MODULE__{} = game) do
+    game.turn
+  end
+
   @spec place_ship(%__MODULE__{}, any(), {non_neg_integer(), non_neg_integer()}, atom()) ::
           {:ok | :last_placed | :all_placed | :invalid_coordinates, %__MODULE__{}, list}
   def place_ship(%__MODULE__{} = game, player_num, coordinates, orientation) do
@@ -76,8 +81,8 @@ defmodule Ships.Core.Game do
       else
         :not_allowed -> {:not_your_turn, shooter, opponent, []}
         true -> {:used, shooter, opponent, []}
-        {:miss, updated_shooter} -> {:miss, updated_shooter, opponent, []}
-        :all_destroyed -> {:game_over, shooter, opponent, []}
+        {:miss, updated_shooter} -> {:miss, updated_shooter, opponent, [coordinates]}
+        :all_destroyed -> {:game_over, shooter, opponent, [coordinates]}
       end
 
     game =
