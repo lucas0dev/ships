@@ -16,7 +16,8 @@ defmodule Ships.Application do
       ShipsWeb.Endpoint,
       ShipsWeb.Presence,
       Ships.Server.GameRegistry,
-      Ships.Server.GameSupervisor
+      Ships.Server.GameSupervisor,
+      {Ships.Server.ChannelWatcher, :watcher}
       # Start a worker by calling: Ships.Worker.start_link(arg)
       # {Ships.Worker, arg}
     ]

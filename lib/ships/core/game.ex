@@ -97,6 +97,19 @@ defmodule Ships.Core.Game do
     game.status
   end
 
+  def player_status(game, player_num) do
+    if Map.get(game, player_num) == nil do
+      {"offline", 0}
+    else
+      {"online", get_ships_placed(game, player_num)}
+    end
+  end
+
+  defp get_ships_placed(game, player_num) do
+    ship_list = Map.get(game, player_num).ships
+    length(ship_list)
+  end
+
   @spec update_game_status(%__MODULE__{}) :: %__MODULE__{}
   defp update_game_status(game) do
     case check_players(game) do

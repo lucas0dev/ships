@@ -21,10 +21,28 @@ defmodule ShipsWeb.GameChannel do
     socket =
       with {:ok, player_num} <- assign_player(game_id),
            :ok <- GameServer.join_game(game_id, player_id) do
+        {opponent_status, opponent_ships} =
+          GameServer.player_status(game_id, get_opponent_num(player_num))
+
+        {player_status, players_ships} = GameServer.player_status(game_id, player_num)
         Presence.track(self(), "game:" <> game_id, player_num, %{id: player_id})
         {:ok, ship_size} = GameServer.get_next_ship(game_id, player_num)
+
         push(socket, "place_ship", %{size: ship_size})
-        broadcast(socket, "player_joined", %{player: Atom.to_string(player_num)})
+        push(socket, "message", %{message: "Place 10 ships on your board."})
+
+        broadcast(socket, "opponent_update", %{
+          recipient: get_opponent_num(player_num),
+          status: player_status,
+          ships: players_ships
+        })
+
+        broadcast(socket, "opponent_update", %{
+          recipient: player_num,
+          status: opponent_status,
+          ships: opponent_ships
+        })
+
         assign(socket, :player_num, player_num)
       else
         _ ->
@@ -38,6 +56,8 @@ defmodule ShipsWeb.GameChannel do
   def handle_info({:last_placed, game_id}, socket) do
     if GameServer.game_status(game_id) == :in_progress do
       broadcast(socket, "next_turn", %{turn: :player1})
+      broadcast(socket, "message", %{message: "The game has started. Good luck!"})
+      broadcast(socket, "game_started", %{})
     end
 
     {:noreply, socket}
@@ -61,10 +81,18 @@ defmodule ShipsWeb.GameChannel do
     ship_coordinates = for coordinates <- ship_coordinates, do: Tuple.to_list(coordinates)
     {_response, next_ship_size} = GameServer.get_next_ship(game_id, player_num)
 
+    {status, ships_placed} = GameServer.player_status(game_id, player_num)
+
     case result do
       :ok ->
         push(socket, "place_ship", %{size: next_ship_size})
         push(socket, "ship_placed", %{coordinates: ship_coordinates})
+
+        broadcast(socket, "opponent_update", %{
+          recipient: get_opponent_num(player_num),
+          status: status,
+          ships: ships_placed
+        })
 
       :invalid_coordinates ->
         push(socket, "message", %{message: "You can't place ship here."})
@@ -81,6 +109,12 @@ defmodule ShipsWeb.GameChannel do
         })
 
         push(socket, "ship_placed", %{last: "true", coordinates: ship_coordinates})
+
+        broadcast(socket, "opponent_update", %{
+          recipient: get_opponent_num(player_num),
+          status: status,
+          ships: ships_placed
+        })
     end
 
     {:reply, :ok, socket}
@@ -176,5 +210,12 @@ defmodule ShipsWeb.GameChannel do
 
   defp id_from_topic(topic) do
     String.replace(topic, "game:", "")
+  end
+
+  defp get_opponent_num(player_num) do
+    case player_num do
+      :player1 -> :player2
+      :player2 -> :player1
+    end
   end
 end

@@ -47,6 +47,15 @@ defmodule Ships.Server.GameServer do
     GenServer.call(via_tuple(game_id), {:shoot, player_num, coordinates})
   end
 
+  def player_status(game_id, player_id) do
+    GenServer.call(via_tuple(game_id), {:player_status, player_id})
+  end
+
+  @spec terminate(any) :: :error | :ok
+  def terminate(game_id) do
+    terminate(GameSupervisor, game_id)
+  end
+
   @impl true
   @spec terminate(any, any) :: :error | :ok
   def terminate(supervisor, game_id) do
@@ -109,6 +118,13 @@ defmodule Ships.Server.GameServer do
     {response, state, shot_coordinates} = Game.shoot(state, player_num, coordinates)
 
     {:reply, {response, state.turn, shot_coordinates}, state}
+  end
+
+  @impl true
+  def handle_call({:player_status, player_num}, _from, state) do
+    {status, ships_placed} = Game.player_status(state, player_num)
+
+    {:reply, {status, ships_placed}, state}
   end
 
   defp via_tuple(game_id) do

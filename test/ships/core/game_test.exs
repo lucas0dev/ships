@@ -413,6 +413,44 @@ defmodule Ships.Core.GameTest do
     end
   end
 
+  describe "player_status(game, player_num) when first player joined and didn't placed any ships" do
+    setup [:player1_join]
+
+    test "should return {'online', 0} tuple for first player", context do
+      game = context.game
+
+      {status_p1, ships_p1} = Game.player_status(game, :player1)
+
+      assert status_p1 == "online"
+      assert ships_p1 == 0
+    end
+
+    test "should return {'offline', 0} tuple for second player", context do
+      game = context.game
+
+      {status_p2, ships_p2} = Game.player_status(game, :player2)
+
+      assert status_p2 == "offline"
+      assert ships_p2 == 0
+    end
+  end
+
+  describe "player_status(game, player_num) when both players joined and placed 2 ships" do
+    setup [:place_all_ships]
+
+    test "should return {'online', 2} tuple for both players", context do
+      game = context.game_all_placed
+
+      {status_p1, ships_p1} = Game.player_status(game, :player1)
+      {status_p2, ships_p2} = Game.player_status(game, :player2)
+
+      assert status_p1 == "online"
+      assert status_p2 == "online"
+      assert ships_p1 == 2
+      assert ships_p2 == 2
+    end
+  end
+
   defp player1_join(_context) do
     player1_id = "player_one"
     {:ok, game} = Game.new_game()

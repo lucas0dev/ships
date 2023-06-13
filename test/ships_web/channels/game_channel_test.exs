@@ -24,10 +24,6 @@ defmodule ShipsWeb.GameChannelTest do
       assert game_data.id == user_id
     end
 
-    test "broadcasts event 'player_joined' with specifying which player joined" do
-      assert_broadcast "player_joined", %{player: "player1"}
-    end
-
     test "should store player_num in a socket as :player1", %{socket: socket} do
       assert socket.assigns.player_num == :player1
     end
@@ -35,6 +31,14 @@ defmodule ShipsWeb.GameChannelTest do
     test "pushes event 'place_ship' with ship size as a payload" do
       assert_push "place_ship", %{size: size}
       assert is_integer(size) == true
+    end
+
+    test "broadcasts 'opponent_update' message with {recipient: :player1, status: _, ships: _} map" do
+      assert_broadcast "opponent_update", %{recipient: :player1, status: _, ships: _}
+    end
+
+    test "broadcasts 'opponent_update' message with {recipient: :player2, status: _, ships: _} map" do
+      assert_broadcast "opponent_update", %{recipient: :player2, status: _, ships: _}
     end
   end
 
@@ -62,10 +66,6 @@ defmodule ShipsWeb.GameChannelTest do
       assert socket2.assigns.player_num == :player2
     end
 
-    test "broadcasts event 'player_joined' with specifying which player joined" do
-      assert_broadcast "player_joined", %{player: "player2"}
-    end
-
     test "pushes event 'place_ship' with ship size as a payload" do
       assert_push "place_ship", %{size: size}
       assert is_integer(size) == true
@@ -83,7 +83,7 @@ defmodule ShipsWeb.GameChannelTest do
     end
   end
 
-  describe "place_ship(%{'x' => x, 'y' => y, 'orientation' => orientation}) when player can place ship" do
+  describe "handle_in(place_ship) when player can place ship" do
     setup [:player1_join, :flush_messages]
 
     test "pushes event 'place_ship' with next ship size", %{socket: socket} do
@@ -101,7 +101,7 @@ defmodule ShipsWeb.GameChannelTest do
     end
   end
 
-  describe "place_ship(%{'x' => x, 'y' => y, 'orientation' => orientation}) with invalid or already used coordinates" do
+  describe "handle_in(place_ship) with invalid or already used coordinates" do
     setup [:player1_join]
 
     test "pushes event 'place_ship' with next ship size", %{socket: socket} do
@@ -122,7 +122,7 @@ defmodule ShipsWeb.GameChannelTest do
     end
   end
 
-  describe "place_ship(%{'x' => x, 'y' => y, 'orientation' => orientation}) when all ships have been already placed" do
+  describe "handle_in(place_ship) when all ships have been already placed" do
     setup [:player1_join, :player2_join, :place_last_ship_p1, :flush_messages]
 
     test "pushes event 'message' with 'You already placed all of your ships.' message", %{
@@ -136,25 +136,13 @@ defmodule ShipsWeb.GameChannelTest do
     end
   end
 
-  describe "place_ship(%{'x' => x, 'y' => y, 'orientation' => orientation}) when player places his last ship" do
+  describe "handle_in(place_ship) when player places his last ship" do
     setup [:player1_join, :player2_join, :flush_messages]
 
-    test "pushes event 'ship_placed' with list of ship coordinates", %{socket: socket} do
+    test "pushes a 'message' event with message that all ships have been placed", %{
+      socket: socket
+    } do
       push(socket, "place_ship", %{"x" => 2, "y" => 2, "orientation" => "horizontal"})
-      flush_messages()
-      x = 4
-      y = 4
-      push(socket, "place_ship", %{"x" => x, "y" => y, "orientation" => "horizontal"})
-
-      assert_push "ship_placed", %{coordinates: ship_coordinates}
-      assert is_list(ship_coordinates) == true
-      assert ship_coordinates == [[x, y], [x + 1, y]]
-    end
-
-    test "pushes event 'message' with 'All of your ships have been placed. Wait for game to begin.' message",
-         %{socket: socket} do
-      push(socket, "place_ship", %{"x" => 2, "y" => 2, "orientation" => "horizontal"})
-      flush_messages()
       x = 4
       y = 4
       push(socket, "place_ship", %{"x" => x, "y" => y, "orientation" => "horizontal"})
@@ -163,9 +151,38 @@ defmodule ShipsWeb.GameChannelTest do
         message: "All of your ships have been placed. Wait for the game to begin."
       }
     end
+
+    test "pushes event 'ship_placed' with list of ship coordinates", %{socket: socket} do
+      push(socket, "place_ship", %{"x" => 2, "y" => 2, "orientation" => "horizontal"})
+      flush_messages()
+      x = 4
+      y = 4
+      push(socket, "place_ship", %{"x" => x, "y" => y, "orientation" => "horizontal"})
+
+      assert_push "ship_placed", %{last: "true", coordinates: ship_coordinates}
+      assert is_list(ship_coordinates) == true
+      assert ship_coordinates == [[x, y], [x + 1, y]]
+    end
+
+    test "broadcasts a 'opponent_update' event with %{recipient: :player2, status: _, ships: _} map",
+         %{
+           socket: socket
+         } do
+      push(socket, "place_ship", %{"x" => 2, "y" => 2, "orientation" => "horizontal"})
+      flush_messages()
+      x = 4
+      y = 4
+      push(socket, "place_ship", %{"x" => x, "y" => y, "orientation" => "horizontal"})
+
+      assert_broadcast "opponent_update", %{
+        recipient: :player2,
+        status: _,
+        ships: _
+      }
+    end
   end
 
-  describe "place_ship(%{'x' => x, 'y' => y, 'orientation' => orientation}) after last ship of both players has been placed" do
+  describe "handle_in(place_ship) after last ship of both players has been placed" do
     setup [:player1_join, :player2_join, :flush_messages]
 
     test "broadcasts a 'next_turn' event with information about which player's turn is next", %{
@@ -180,9 +197,35 @@ defmodule ShipsWeb.GameChannelTest do
         turn: :player1
       }
     end
+
+    test "broadcasts a 'message' event with 'The game has started. Good luck!' message", %{
+      socket: socket
+    } do
+      push(socket, "place_ship", %{"x" => 2, "y" => 2, "orientation" => "horizontal"})
+      flush_messages()
+      x = 4
+      y = 4
+      push(socket, "place_ship", %{"x" => x, "y" => y, "orientation" => "horizontal"})
+
+      assert_broadcast "message", %{
+        message: "The game has started. Good luck!"
+      }
+    end
+
+    test "broadcasts a 'game_started' event with empty map", %{
+      socket: socket
+    } do
+      push(socket, "place_ship", %{"x" => 2, "y" => 2, "orientation" => "horizontal"})
+      flush_messages()
+      x = 4
+      y = 4
+      push(socket, "place_ship", %{"x" => x, "y" => y, "orientation" => "horizontal"})
+
+      assert_broadcast "game_started", %{}
+    end
   end
 
-  describe "place_ship(%{'x' => x, 'y' => y, 'orientation' => orientation}) with invalid parameters" do
+  describe "handle_in(place_ship) with invalid parameters" do
     setup [:player1_join, :player2_join, :flush_messages]
 
     test "pushes a 'message' event with 'Something wen't wrong. Try again.' message", %{
@@ -201,7 +244,7 @@ defmodule ShipsWeb.GameChannelTest do
     end
   end
 
-  describe "shoot(%{'x' => x, 'y' => y}) when ship was hit" do
+  describe "handle_in(shoot) when ship was hit" do
     setup [:player1_join, :player2_join, :place_last_ship_p1, :flush_messages]
 
     test "should broadcast 'board_update' event with :hit response", %{socket: socket} do
@@ -229,7 +272,7 @@ defmodule ShipsWeb.GameChannelTest do
     end
   end
 
-  describe "shoot(%{'x' => x, 'y' => y}) when ship was destroyed" do
+  describe "handle_in(shoot) when ship was destroyed" do
     setup [:player1_join, :player2_join, :place_last_ship_p1, :flush_messages]
 
     test "should broadcast 'board_update' event with :destroyed response", %{socket: socket} do
@@ -260,7 +303,7 @@ defmodule ShipsWeb.GameChannelTest do
     end
   end
 
-  describe "shoot(%{'x' => x, 'y' => y}) when its opposite player turn" do
+  describe "handle_in(shoot) when its opposite player turn" do
     setup [:player1_join, :player2_join, :place_last_ship_p1, :flush_messages]
 
     test "should push 'message' event 'You can't do that, wait for your turn' message", %{
@@ -274,7 +317,7 @@ defmodule ShipsWeb.GameChannelTest do
     end
   end
 
-  describe "shoot(%{'x' => x, 'y' => y}) when player didn't hit a ship" do
+  describe "handle_in(shoot) when player didn't hit a ship" do
     setup [:player1_join, :player2_join, :place_last_ship_p1, :flush_messages]
 
     test "should broadcast 'board_update' event with :miss response", %{socket: socket} do
@@ -301,7 +344,7 @@ defmodule ShipsWeb.GameChannelTest do
     end
   end
 
-  describe "shoot(%{'x' => x, 'y' => y}) when player destroyed all of the opponent ships" do
+  describe "handle_in(shoot) when player destroyed all of the opponent ships" do
     setup [:player1_join, :player2_join, :place_last_ship_p1, :flush_messages]
 
     test "should broadcast 'board_update' event with :game_over response", %{socket: socket} do
@@ -318,7 +361,7 @@ defmodule ShipsWeb.GameChannelTest do
     end
   end
 
-  describe "shoot(%{'x' => x, 'y' => y}) with invalid parameters" do
+  describe "handle_in(shoot) with invalid parameters" do
     setup [:player1_join, :player2_join, :place_last_ship_p1, :flush_messages]
 
     test "should push message event with 'Something wen't wrong. Try again.' message", %{
@@ -336,7 +379,7 @@ defmodule ShipsWeb.GameChannelTest do
     end
   end
 
-  describe "shoot(%{'x' => x, 'y' => y}) when player already shot at chosen coordinates" do
+  describe "handle_in(shoot) when player already shot at chosen coordinates" do
     setup [:player1_join, :player2_join, :place_last_ship_p1, :flush_messages]
 
     test "should push message event with 'You've already shot at this cell. Choose another one.' message",

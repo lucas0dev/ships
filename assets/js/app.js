@@ -1,42 +1,52 @@
 import "../css/app.css"
-import socket from "./user_socket.js"
 import "phoenix_html"
+import {Socket} from "phoenix"
+let socket = new Socket("/socket", {params: {token: window.userToken}})
+socket.connect();
 
 let lobby = socket.channel('lobby');
-let player_num = "";
+let game_channel;
+let player_num;
 let selectedCell = [];
 let orientation = "horizontal";
-let player_board = document.getElementById("player-board");
-let enemy_board = document.getElementById("enemy-board");
-let message_block = document.getElementById("messages");
+
+const player_board = document.getElementById("player-board");
+const enemy_board = document.getElementById("enemy-board");
+const message_block = document.getElementById("messages");
+const modal = document.querySelector(".modal");
+const overlay = document.querySelector(".overlay");
+const join_btn = document.querySelector(".btn-join");
+const modal_msg = document.querySelector(".modal-msg");
+const enemy_status = document.querySelector(".status");
+const enemy_ships = document.querySelector(".ships-placed");
+
 let current_board = player_board;
 
 socket.connect();
-joinLobby();
+lobby.join();
+
+join_btn.addEventListener("click", joinLobby);
+join_btn.addEventListener("click", closeModal);
+join_btn.addEventListener("click", prepareBoards);
 
 lobby.on("game_found", (payload) => {
-    game_id = payload.game_id;
+    let game_id = payload.game_id;
     player_num = payload.player;
     game_channel = socket.channel(`game:${game_id}`);
     game_channel.join()
-    .receive('ok', resp => {
-      
-      addListeners(player_board);
-    })
-    .receive('error', resp => {
-      lobby.push("find_game", {});
-    });
+      .receive('ok', resp => {
+        addListeners(player_board);
+      })
+      .receive('error', resp => {
+        lobby.push("find_game", {});
+      });
     game_channel.on("unable_to_join", () => {
       joinLobby();
-    });
-    game_channel.on("player_joined", (payload) => {
-      // updateStatus(payload.player);
     });
     game_channel.on("place_ship", (payload) => {
       ship_size = payload.size;
     });
     game_channel.on("ship_placed", (payload) => {
-      console.log(payload);
       placeOnBoard(payload.coordinates)
       if(payload.last == "true"){
         removeListeners(player_board);
@@ -51,28 +61,71 @@ lobby.on("game_found", (payload) => {
       }
     });
     game_channel.on("message", (payload) => {
-      message_block.innerHTML = payload.message;
-      message_block.classList.add("new-message");
+      addMessage(payload.message);
+    });
+    game_channel.on("game_started", (payload) => {
+      hideStatus();
+    });
+    game_channel.on("modal_msg", (payload) => {
+      openModal(payload.message);
     });
     game_channel.on("board_update", (payload) => {
       updateBoard(payload);
+      if(payload.shooter == player_num){
+        addShooterInfo(payload);
+      } 
+      else{
+        addOpponentInfo(payload);
+      }
+    });
+    game_channel.on("opponent_update", (payload) => {
+      if(payload.recipient == player_num){
+        if(payload.status == "online"){
+          enemy_status.innerHTML = "online";
+        }
+        enemy_ships.innerHTML = payload.ships;
+      }
     });
 });
 
+function prepareBoards(){
+  current_board = player_board;
+  cells = document.getElementsByClassName("col");
+  for(var i = 0; i < cells.length; i++) {
+    if(cells[i].classList.contains("ship")){cells[i].classList.remove("ship");}
+    if(cells[i].classList.contains("hit")){cells[i].classList.remove("hit");}
+    if(cells[i].classList.contains("miss")){cells[i].classList.remove("miss");}
+    if(cells[i].classList.contains("destroyed")){cells[i].classList.remove("destroyed");}
+  }
+  let active_board = document.querySelector(".active-board");
+  if(active_board){ active_board.classList.remove("active-board"); }
+}
+
 function selectBoard(turn){
   if(turn == player_num){
-    player_board.classList.remove("active-board");
-    enemy_board.classList.add("active-board");
-  } else {
-    player_board.classList.add("active-board");
     enemy_board.classList.remove("active-board");
+    player_board.classList.add("active-board");
+    enemy_board.querySelector(".turn-label").classList.add("text-hidden");
+    player_board.querySelector(".turn-label").classList.remove("text-hidden");
+  } else {
+    enemy_board.classList.add("active-board");
+    player_board.classList.remove("active-board");
+    player_board.querySelector(".turn-label").classList.add("text-hidden");
+    enemy_board.querySelector(".turn-label").classList.remove("text-hidden");
   }
 }
 
 function updateBoard(data){
-  console.log(data)
   let board = (data.shooter == player_num) ? enemy_board : player_board;
   let cell_class = data.result;
+  if(data.result == "game_over"){ 
+    cell_class = "destroyed";
+    if(data.shooter == player_num){ 
+      openModal("<h3>Congratulations, you won!</h3>");
+    } else {
+      openModal("<h3>You lost, maybe next time you will win.</h3>");
+    }
+  }
   for(var i = 0; i < data.coordinates.length; i++) {
     [col, row] = data.coordinates[i]
     if (row >= 0 && row <= 9 && col >= 0 && col <= 9) {
@@ -81,10 +134,50 @@ function updateBoard(data){
   }
 }
 
+function addShooterInfo(data){
+  let turn;
+  let shoot_response;
+  switch (data.result) {
+    case 'hit':
+      shoot_response = 'You hit the ship!'
+      turn = "It's your turn again."
+      break;
+    case 'miss':
+      shoot_response = 'You missed!'
+      turn = "Now it's the enemy's turn"
+      break;
+    case 'destroyed':
+      shoot_response = 'Congratulations! You destroyed the ship.'
+      turn = "It's your turn again."
+      break;
+  }
+  let message = shoot_response + ' ' + turn;
+  if(data.result != "game_over"){ addMessage(message); }
+}
+
+function addOpponentInfo(data){
+  let turn;
+  let shoot_response;
+  switch (data.result) {
+    case 'hit':
+      shoot_response = 'Oh no, enemy hit your ship!'
+      turn = "It's his turn again."
+      break;
+    case 'miss':
+      shoot_response = 'Enemy missed!'
+      turn = "Now it's your turn."
+      break;
+    case 'destroyed':
+      shoot_response = 'Your ship was destroyed!'
+      turn = "It's enemy's turn again."
+      break;
+  }
+  let message = shoot_response + ' ' + turn;
+  if(data.result != "game_over"){ addMessage(message); }
+}
+
 function joinLobby() {
-  lobby.join().receive('ok', resp => {
-    lobby.push("find_game", {}) 
-  });
+  lobby.push("find_game", {}) 
 }
 
 function addListeners(target){
@@ -129,18 +222,19 @@ function placeShip(event) {
 }
 
 function highlightCells(event) {
-  selectedCell = event.target;
-  addShipShape(selectedCell);
-  selectedCell.onmouseleave = function() { 
-    removeShipShape();
-    selectedCell = [];
+  if(event.target.classList.contains("col")){
+    selectedCell = event.target;
+    addShipShape(selectedCell);
+    selectedCell.onmouseleave = function() { 
+      removeShipShape();
+      selectedCell = [];
+    }
   }
 }
 
 function highlightCell(event) {
   if(event.target.classList.contains("col")){
     let cell = event.target;
-    console.log(cell);
     cell.classList.add("hovered");
     cell.onmouseleave = function() { 
       cell.classList.remove("hovered");
@@ -197,7 +291,28 @@ function shootEnemy(event) {
   enemy_board.removeEventListener('mouseover', highlightCell);
 }
 
+function addMessage(message){
+  message_block.innerHTML = message;
+  message_block.classList.add("new-message");
+}
+
 function removeMessage(){
   message_block.innerHTML = "";
   message_block.classList.remove("new-message");
+}
+
+function openModal(message){
+  modal_msg.innerHTML = message;
+  removeListeners(player_board);
+  modal.classList.remove("hidden");
+  overlay.classList.remove("hidden");
+  
+}
+function closeModal() {
+  modal.classList.add("hidden");
+  overlay.classList.add("hidden");
+}
+
+function hideStatus(){
+  document.querySelector(".enemy-status").classList.add("hidden");
 }
