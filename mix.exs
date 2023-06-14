@@ -10,7 +10,22 @@ defmodule Ships.MixProject do
       compilers: Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      test_coverage: [
+        ignore_modules: [
+          ShipsWeb,
+          ShipsWeb.ErrorHelpers,
+          ShipsWeb.ErrorView,
+          ShipsWeb.LayoutView,
+          ShipsWeb.PageView,
+          ShipsWeb.Router,
+          ShipsWeb.Router.Helpers,
+          ShipsWeb.Endpoint,
+          Ships.Application,
+          ShipsWeb.ConnCase,
+          ShipsWeb.Telemetry
+        ]
+      ]
     ]
   end
 
