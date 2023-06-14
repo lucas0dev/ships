@@ -59,6 +59,41 @@ defmodule Ships.Server.ChannelWatcherTest do
     end
   end
 
+  describe "demonitor(server_name, topic)" do
+    setup [:player1_join, :player2_join]
+
+    test "it unsubscribes from given topic and does not receive messages for that topic",
+         context do
+      topic = "game:" <> context.game_id
+      {:ok, pid} = ChannelWatcher.start_link(:test_watcher)
+      ChannelWatcher.monitor(:test_watcher, topic)
+      :erlang.trace(pid, true, [:receive])
+
+      ShipsWeb.Endpoint.broadcast(topic, "test_msg", %{
+        message: "test message"
+      })
+
+      assert_receive {:trace, ^pid, :receive,
+                      %Phoenix.Socket.Broadcast{
+                        event: "test_msg",
+                        payload: %{message: "test message"}
+                      }}
+
+      ChannelWatcher.demonitor(:test_watcher, topic)
+      flush_messages()
+
+      ShipsWeb.Endpoint.broadcast(topic, "test_msg2", %{
+        message: "test message2"
+      })
+
+      refute_receive {:trace, ^pid, :receive,
+                      %Phoenix.Socket.Broadcast{
+                        event: "test_msg2",
+                        payload: %{message: "test message2"}
+                      }}
+    end
+  end
+
   defp player1_join(_context) do
     {:ok, socket} = connect(ShipsWeb.UserSocket, %{}, %{})
     {:ok, game_id, pid} = GameServer.new_game()
@@ -90,5 +125,14 @@ defmodule Ships.Server.ChannelWatcherTest do
     :sys.replace_state(context.pid, fn _state -> game end)
 
     %{socket2: socket2, player2_id: player2_id}
+  end
+
+  defp flush_messages() do
+    receive do
+      _ ->
+        flush_messages()
+    after
+      100 -> :ok
+    end
   end
 end

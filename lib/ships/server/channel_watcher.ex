@@ -8,8 +8,14 @@ defmodule Ships.Server.ChannelWatcher do
 
   alias Ships.Server.GameServer
 
+  @spec monitor(atom, String.t()) :: :ok
   def monitor(server_name, topic) do
     GenServer.call(server_name, {:monitor, topic})
+  end
+
+  @spec demonitor(atom, String.t()) :: :ok
+  def demonitor(server_name, topic) do
+    GenServer.call(server_name, {:demonitor, topic})
   end
 
   def start_link(name) do
@@ -49,6 +55,11 @@ defmodule Ships.Server.ChannelWatcher do
 
   def handle_call({:monitor, topic}, _from, state) do
     ShipsWeb.Endpoint.subscribe(topic)
+    {:reply, :ok, state}
+  end
+
+  def handle_call({:demonitor, topic}, _from, state) do
+    ShipsWeb.Endpoint.unsubscribe(topic)
     {:reply, :ok, state}
   end
 end

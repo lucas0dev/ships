@@ -5,6 +5,7 @@ defmodule ShipsWeb.GameChannel do
 
   use ShipsWeb, :channel
 
+  alias Ships.Server.ChannelWatcher
   alias Ships.Server.GameServer
   alias ShipsWeb.Presence
 
@@ -252,6 +253,8 @@ defmodule ShipsWeb.GameChannel do
         broadcast(socket, "next_turn", %{turn: next_turn})
 
       response == :game_over ->
+        ChannelWatcher.demonitor(:watcher, "game:" <> game_id)
+
         broadcast(socket, "board_update", %{
           result: response,
           shooter: player_num,

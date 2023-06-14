@@ -48,9 +48,9 @@ config :logger, level: :info
 #
 # Check `Plug.SSL` for all available options in `force_ssl`.
 config :ships, ShipsWeb.Endpoint,
-http: [:inet6, port: System.get_env("PORT") || 4000],
-url: [scheme: "https", port: 443],
-force_ssl: [rewrite_on: [:x_forwarded_proto], host: nil],
-check_origin: ["//*.gigalixirapp.com"],
-# To bust cache during hot upgrades
-version: Mix.Project.config()[:version]
+  http: [:inet6, port: System.get_env("PORT") || 4000],
+  url: [scheme: "https", port: 443],
+  force_ssl: [rewrite_on: [:x_forwarded_proto], host: nil],
+  check_origin: ["//*.gigalixirapp.com"],
+  # To bust cache during hot upgrades
+  version: Mix.Project.config()[:version]
