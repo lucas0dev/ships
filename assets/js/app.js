@@ -68,6 +68,7 @@ lobby.on("game_found", (payload) => {
     });
     game_channel.on("modal_msg", (payload) => {
       openModal(payload.message);
+      showStatus();
     });
     game_channel.on("board_update", (payload) => {
       updateBoard(payload);
@@ -263,4 +264,8 @@ function closeModal() {
 
 function hideStatus(){
   document.querySelector(".enemy-status").classList.add("hidden");
+}
+
+function showStatus(){
+  document.querySelector(".enemy-status").classList.remove("hidden");
 }
