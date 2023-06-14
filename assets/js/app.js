@@ -16,7 +16,7 @@ const message_block = document.getElementById("messages");
 const modal = document.querySelector(".modal");
 const overlay = document.querySelector(".overlay");
 const join_btn = document.querySelector(".btn-join");
-const modal_msg = document.querySelector(".modal-msg");
+const modal_title = document.querySelector(".modal-title");
 const enemy_status = document.querySelector(".status");
 const enemy_ships = document.querySelector(".ships-placed");
 
@@ -61,7 +61,7 @@ lobby.on("game_found", (payload) => {
       }
     });
     game_channel.on("message", (payload) => {
-      addMessage(payload.message);
+      addMessage(payload);
     });
     game_channel.on("game_started", (payload) => {
       hideStatus();
@@ -71,12 +71,6 @@ lobby.on("game_found", (payload) => {
     });
     game_channel.on("board_update", (payload) => {
       updateBoard(payload);
-      if(payload.shooter == player_num){
-        addShooterInfo(payload);
-      } 
-      else{
-        addOpponentInfo(payload);
-      }
     });
     game_channel.on("opponent_update", (payload) => {
       if(payload.recipient == player_num){
@@ -87,6 +81,10 @@ lobby.on("game_found", (payload) => {
       }
     });
 });
+
+function joinLobby() {
+  lobby.push("find_game", {}) 
+}
 
 function prepareBoards(){
   current_board = player_board;
@@ -120,11 +118,6 @@ function updateBoard(data){
   let cell_class = data.result;
   if(data.result == "game_over"){ 
     cell_class = "destroyed";
-    if(data.shooter == player_num){ 
-      openModal("<h3>Congratulations, you won!</h3>");
-    } else {
-      openModal("<h3>You lost, maybe next time you will win.</h3>");
-    }
   }
   for(var i = 0; i < data.coordinates.length; i++) {
     [col, row] = data.coordinates[i]
@@ -132,52 +125,6 @@ function updateBoard(data){
       board.getElementsByClassName(`cell${row}${col}`)[0].classList.add(cell_class);
     }
   }
-}
-
-function addShooterInfo(data){
-  let turn;
-  let shoot_response;
-  switch (data.result) {
-    case 'hit':
-      shoot_response = 'You hit the ship!'
-      turn = "It's your turn again."
-      break;
-    case 'miss':
-      shoot_response = 'You missed!'
-      turn = "Now it's the enemy's turn"
-      break;
-    case 'destroyed':
-      shoot_response = 'Congratulations! You destroyed the ship.'
-      turn = "It's your turn again."
-      break;
-  }
-  let message = shoot_response + ' ' + turn;
-  if(data.result != "game_over"){ addMessage(message); }
-}
-
-function addOpponentInfo(data){
-  let turn;
-  let shoot_response;
-  switch (data.result) {
-    case 'hit':
-      shoot_response = 'Oh no, enemy hit your ship!'
-      turn = "It's his turn again."
-      break;
-    case 'miss':
-      shoot_response = 'Enemy missed!'
-      turn = "Now it's your turn."
-      break;
-    case 'destroyed':
-      shoot_response = 'Your ship was destroyed!'
-      turn = "It's enemy's turn again."
-      break;
-  }
-  let message = shoot_response + ' ' + turn;
-  if(data.result != "game_over"){ addMessage(message); }
-}
-
-function joinLobby() {
-  lobby.push("find_game", {}) 
 }
 
 function addListeners(target){
@@ -291,26 +238,27 @@ function shootEnemy(event) {
   enemy_board.removeEventListener('mouseover', highlightCell);
 }
 
-function addMessage(message){
-  message_block.innerHTML = message;
-  message_block.classList.add("new-message");
+function addMessage(payload){
+  message_block.innerHTML = payload.message;
+  message_block.className = "msg-" + payload.type;
 }
 
 function removeMessage(){
   message_block.innerHTML = "";
-  message_block.classList.remove("new-message");
+  message_block.removeAttribute('class');
 }
 
 function openModal(message){
-  modal_msg.innerHTML = message;
+  modal_title.innerHTML = message;
   removeListeners(player_board);
   modal.classList.remove("hidden");
   overlay.classList.remove("hidden");
-  
 }
+
 function closeModal() {
   modal.classList.add("hidden");
   overlay.classList.add("hidden");
+  document.querySelector(".modal-msg").classList.add("hidden");
 }
 
 function hideStatus(){

@@ -1,9 +1,11 @@
 <section class="modal">
-  <div class="modal-msg">
-    <h1>Welcome to the Ships game!</h1>
+  <div>
+    <h1 class="modal-title">Welcome to the Ships game!</h1>
+    <div class="modal-msg">
       <p>Game controls:</p>
       <p>middle mouse click/spacebar - rotate ship</p>
       <p>left mouse click - place ship/shoot</p>
+    </div>
   </div>
 
   <button class="btn-join">Start new game</button>
@@ -14,7 +16,7 @@
 <div class="boards">
     <div class="board-container">
         <div class="board" id="player-board">
-            <p class="turn-label"> CURRENT TURN: </p>
+            <p class="turn-label text-hidden"> CURRENT TURN: </p>
             <p class="board-label"> YOUR BOARD </p>
             <%= for row <- @row do %>
             <div class={"row  row#{row}"}>
@@ -27,7 +29,7 @@
     </div>
     <div class="board-container">
         <div class="board" id="enemy-board">
-            <p class="turn-label"> CURRENT TURN: </p>
+            <p class="turn-label text-hidden"> CURRENT TURN: </p>
             <p class="board-label"> ENEMY BOARD </p>
             <%= for row <- @row do %>
             <div class={"row row#{row}"}>

@@ -35,6 +35,7 @@ defmodule Ships.Server.ChannelWatcher do
         GameServer.terminate(game_id)
 
         ShipsWeb.Endpoint.broadcast(topic, "modal_msg", %{
+          recipient: "both",
           message: "<h3>Your opponent has left.</h3>"
         })
     end

@@ -185,8 +185,26 @@
   width: 100%;
 }
 
-.new-message{
+.msg-info{
+  background-color: rgb(45, 122, 167);
+  font-weight: 900;
+}
+
+
+.msg-error{
   background-color: yellow;
+  font-weight: 900;
+}
+
+
+.msg-bad{
+  background-color: rgb(231, 82, 82);
+  font-weight: 900;
+}
+
+
+.msg-good{
+  background-color: green;
   font-weight: 900;
 }
 
