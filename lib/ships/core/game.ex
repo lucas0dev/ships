@@ -70,26 +70,33 @@ defmodule Ships.Core.Game do
   def shoot(%__MODULE__{} = game, player_num, coordinates) do
     {shooter, opponent} = assign_roles(game, player_num)
 
-    {response, updated_shooter, updated_opponent, coordinates_list} =
+    {response, updated_shooter, updated_opponent, damage_coordinates} =
       with :allowed <- is_player_allowed(game, player_num),
            false <- coordinates_used?(shooter, coordinates),
            {:hit, updated_shooter, updated_opponent} <-
              take_a_shot(shooter, opponent, coordinates),
-           {shot_result, coordinates_list} <- check_if_destroyed(updated_opponent, coordinates),
-           :not_yet <- all_ships_destroyed(updated_opponent) do
-        {shot_result, updated_shooter, updated_opponent, coordinates_list}
+           {shot_result, damage_coordinates} <- check_the_damage(updated_opponent, coordinates),
+           :fleet_alive <- fleet_condition(updated_opponent, damage_coordinates) do
+        {shot_result, updated_shooter, updated_opponent, damage_coordinates}
       else
-        :not_allowed -> {:not_your_turn, shooter, opponent, []}
-        true -> {:used, shooter, opponent, []}
-        {:miss, updated_shooter} -> {:miss, updated_shooter, opponent, [coordinates]}
-        :all_destroyed -> {:game_over, shooter, opponent, [coordinates]}
+        :not_allowed ->
+          {:not_your_turn, shooter, opponent, [coordinates]}
+
+        true ->
+          {:used, shooter, opponent, [coordinates]}
+
+        {:miss, updated_shooter} ->
+          {:miss, updated_shooter, opponent, [coordinates]}
+
+        {:fleet_destroyed, damage_coordinates} ->
+          {:game_over, shooter, opponent, damage_coordinates}
       end
 
     game =
       update_game(game, updated_shooter, updated_opponent)
       |> assign_next_turn(response)
 
-    {response, game, coordinates_list}
+    {response, game, damage_coordinates}
   end
 
   @spec status(%__MODULE__{}) :: :preparing | :in_progress | :game_over
@@ -160,16 +167,16 @@ defmodule Ships.Core.Game do
     end
   end
 
-  @spec all_ships_destroyed(Player.t()) :: :all_destroyed | :not_yet
-  defp all_ships_destroyed(opponent) do
+  @spec fleet_condition(Player.t(), list) :: {:fleet_destroyed, list} | :fleet_alive
+  defp fleet_condition(opponent, damage_coordinates) do
     case length(opponent.got_hit_at) == Enum.sum(opponent.available_ships) do
-      true -> :all_destroyed
-      false -> :not_yet
+      true -> {:fleet_destroyed, damage_coordinates}
+      false -> :fleet_alive
     end
   end
 
-  @spec check_if_destroyed(Player.t(), tuple()) :: {atom, list}
-  defp check_if_destroyed(player, coordinates) do
+  @spec check_the_damage(Player.t(), tuple()) :: {atom, list}
+  defp check_the_damage(player, coordinates) do
     player_ships = Map.get(player, :ships)
     ship_coordinates = Enum.find(player_ships, fn ship -> Enum.member?(ship, coordinates) end)
     hit_coordinates = Map.get(player, :got_hit_at)

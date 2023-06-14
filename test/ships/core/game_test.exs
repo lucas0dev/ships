@@ -281,6 +281,14 @@ defmodule Ships.Core.GameTest do
 
       assert game_after.turn == :player1
     end
+
+    test "should return list with shot at coordinates", context do
+      {_response, game, _coordinates} = Game.shoot(context.game, :player1, context.coordinates)
+
+      {:used, _game_after, coordinates} = Game.shoot(game, :player1, context.coordinates)
+
+      assert coordinates == [context.coordinates]
+    end
   end
 
   describe "shoot(game, player_id, coordinates) when shot missed the ship" do
@@ -290,6 +298,12 @@ defmodule Ships.Core.GameTest do
       {response, _game, _coordinates} = Game.shoot(context.game, :player1, {8, 8})
 
       assert response == :miss
+    end
+
+    test "should return list with shot at coordinates", context do
+      {:miss, _game, coordinates} = Game.shoot(context.game, :player1, {8, 8})
+
+      assert coordinates == [{8, 8}]
     end
 
     test "should update shooter's shot_at list", context do
@@ -357,10 +371,22 @@ defmodule Ships.Core.GameTest do
   end
 
   describe "shoot(game, player_id, coordinates) when all opponent ships have been destroyed" do
-    setup [:place_all_ships, :destroy_all_ships]
+    setup [:place_all_ships]
 
     test "should return {:game_over, game, coordinates}", context do
-      assert context.response == :game_over
+      {_response, game, _coordinates} = Game.shoot(context.game, :player1, {0, 0})
+      {_response, game, _coordinates} = Game.shoot(game, :player1, {3, 2})
+      {response, _game, _coordinates} = Game.shoot(game, :player1, {2, 2})
+
+      assert response == :game_over
+    end
+
+    test "should return list with shot at coordinates", context do
+      {_response, game, _coordinates} = Game.shoot(context.game, :player1, {0, 0})
+      {_response, game, _coordinates} = Game.shoot(game, :player1, {3, 2})
+      {_response, _game, coordinates} = Game.shoot(game, :player1, {2, 2})
+
+      assert coordinates == [{3, 2}, {2, 2}]
     end
   end
 
@@ -466,17 +492,8 @@ defmodule Ships.Core.GameTest do
     %{game: game, player2_id: player2_id}
   end
 
-  defp destroy_all_ships(context) do
-    {_response, game, _coordinates} = Game.shoot(context.game_all_placed, :player1, {0, 0})
-
-    {response, game, _coordinates} = Game.shoot(game, :player1, {2, 2})
-
-    %{game: game, response: response}
-  end
-
   defp shoot_three_times(context) do
     {_response, game, _coordinates} = Game.shoot(context.game, :player1, {0, 0})
-
     {_response, game, _coordinates} = Game.shoot(game, :player1, {1, 0})
     {_response, game, _coordinates} = Game.shoot(game, :player1, {2, 0})
 
@@ -513,8 +530,8 @@ defmodule Ships.Core.GameTest do
     player2 = %{
       game.player2
       | status: :ready,
-        available_ships: [1, 1],
-        ships: [[{0, 0}], [{2, 2}]]
+        available_ships: [1, 2],
+        ships: [[{0, 0}], [{3, 2}, {2, 2}]]
     }
 
     game = %{game | player1: player1}
