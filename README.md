@@ -1,18 +1,13 @@
-# Ships
+# Ships - a simple two-player game
 
-To start your Phoenix server:
+Players must place 10 ships on their 10 x 10 board. Then they take turns shooting at the opponent's board and if it was a hit or the destruction of the opponent's ship - the next move is made by the player who shot. If there is no hit opponent will make the next move. The game ends when all of one player's ships are destroyed.
 
-  * Install dependencies with `mix deps.get`
-  * Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
+Live demo - https://shipsgame.gigalixirapp.com/
+## Tech
+The game logic was written in elixir using **gen_server**.
+The frontend was created using phoenix and js - communication with the player is done using **phoenix channels**. 
+When a player enters the homepage, he automatically joins the lobby channel, and when he clicks the "start new game" button, an available game is searched and the player joins the corresponding game channel - **phoenix presence** is responsible for monitoring players in the lobby and games channels.
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
 
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
+![Ships game demo](game_gif.gif)
 
-## Learn more
-
-  * Official website: https://www.phoenixframework.org/
-  * Guides: https://hexdocs.pm/phoenix/overview.html
-  * Docs: https://hexdocs.pm/phoenix
-  * Forum: https://elixirforum.com/c/phoenix-forum
-  * Source: https://github.com/phoenixframework/phoenix
